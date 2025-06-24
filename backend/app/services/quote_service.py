@@ -1,11 +1,51 @@
 from typing import List, Optional
 from datetime import datetime
 import uuid
+import json
+import os
 from app.models.quotes import Quote, QuoteCreate, QuoteUpdate, QuoteItem, QuoteItemCreate
 
-# In-memory storage for demo purposes
-quotes_db: dict[str, dict] = {}
-quote_items_db: dict[str, dict] = {}
+# File-based storage for demo purposes
+DATA_DIR = "data"
+QUOTES_FILE = os.path.join(DATA_DIR, "quotes.json")
+ITEMS_FILE = os.path.join(DATA_DIR, "quote_items.json")
+
+# Ensure data directory exists
+os.makedirs(DATA_DIR, exist_ok=True)
+
+def load_data():
+    """Load data from JSON files"""
+    quotes_db = {}
+    quote_items_db = {}
+    
+    if os.path.exists(QUOTES_FILE):
+        try:
+            with open(QUOTES_FILE, 'r') as f:
+                quotes_db = json.load(f)
+        except (json.JSONDecodeError, FileNotFoundError):
+            pass
+    
+    if os.path.exists(ITEMS_FILE):
+        try:
+            with open(ITEMS_FILE, 'r') as f:
+                quote_items_db = json.load(f)
+        except (json.JSONDecodeError, FileNotFoundError):
+            pass
+    
+    return quotes_db, quote_items_db
+
+def save_data(quotes_db: dict, quote_items_db: dict):
+    """Save data to JSON files"""
+    try:
+        with open(QUOTES_FILE, 'w') as f:
+            json.dump(quotes_db, f, default=str, indent=2)
+        with open(ITEMS_FILE, 'w') as f:
+            json.dump(quote_items_db, f, default=str, indent=2)
+    except Exception as e:
+        print(f"Error saving data: {e}")
+
+# Load existing data on startup
+quotes_db, quote_items_db = load_data()
 
 
 class QuoteService:
@@ -52,6 +92,7 @@ class QuoteService:
         }
         
         quotes_db[quote_id] = quote_dict
+        save_data(quotes_db, quote_items_db)
         return Quote(**quote_dict)
     
     @staticmethod
@@ -134,6 +175,7 @@ class QuoteService:
         
         quote_dict["updated_at"] = datetime.utcnow()
         quotes_db[quote_id] = quote_dict
+        save_data(quotes_db, quote_items_db)
         
         return QuoteService.get_quote(quote_id, user_id)
     
@@ -154,6 +196,7 @@ class QuoteService:
         
         # Delete quote
         del quotes_db[quote_id]
+        save_data(quotes_db, quote_items_db)
         return True
     
     @staticmethod
@@ -224,3 +267,6 @@ class QuoteService:
         
         for quote_data in sample_quotes:
             QuoteService.create_quote(quote_data, user_id)
+        
+        # Save after adding sample data
+        save_data(quotes_db, quote_items_db)
