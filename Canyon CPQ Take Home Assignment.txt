@@ -1,0 +1,62 @@
+﻿CPQ (Configure-Price-Quote) systems streamline the process of creating, reviewing, and sending pricing quotes for products or services to customers. In a CPQ system, the salesperson (AE) configures a product or service offering, assigns pricing, and submits this for internal approvals before it’s sent out to the customer as an order form document for signature.
+
+
+See Kleiner’s CPQ Market Analysis
+
+
+For this exercise we will be using the Zip product tour as our inspiration.  Zip is the tool many companies use to manage buying software whereas what we’re building (CPQ) is what companies use to manage selling software. The link can be found here: https://ziphq.navattic.com/rlmg0u0s. 
+
+
+Personas & Workflow
+* AE (Account Executive) / Sales person – Creates the quote.
+* Deal Desk – Approves quotes with modest discounts (e.g. up to 15%).
+* CRO (Chief Revenue Officer) – Approves quotes with larger discounts (e.g. 15–40%).
+* Legal – Reviews quotes for contractual language.
+* Finance – Approves edge-case deals (e.g. discounts >40% or bespoke payment terms).
+* Customer – Receives the final approved quote.
+
+
+Goal: Build or design a functional mini CPQ web app called Canyon.ai.  
+* Designers: Submit a figma link
+* Developers: Submit a link to the prototype app and the github link to the code.
+
+
+Landing Page
+* A simple home page for Canyon, explaining what Canyon is and inviting users to log in.
+* Branding, logo placeholder, minimal marketing copy.
+
+
+Login Flow
+* Google SSO
+
+
+Sidebar Navigation
+* Create a Zip-inspired sidebar with tabs:
+   * Home
+   * Quotes
+   * Create Quote (bonus)
+   * Insights (bonus)
+   * Feel free to add stubs for additional menu items you’d want to implement later
+
+
+Quotes Tab (spend most time here)
+* Display a list of customer quotes (mock data is fine).
+* Each customer quote should have an associated approval workflow.
+* Allow editing of the approval chain:
+   * Drag & drop or step-by-step builder.
+   * Add/remove steps, reorder stages
+* Use the personas listed above as the options.
+
+
+Bonus 1: Create Quote Sidebar Menu Item
+* Let the sales person (AE) input a natural language prompt: “Customer A wants 100 seats of product X with 25% discount”.
+* Use an LLM to generate a quote document (product, pricing, discounts).
+* Output: generated quote ready to be used in the approval flow.
+
+
+Bonus 2: Insights Sidebar Menu Item
+* Build basic dashboards showing overall CPQ stats (all mock data):
+   * Avg. approval time per persona.
+   * Quotes by stage (AE, Deal Desk, CRO).
+   * % quotes approved/rejected.
+   * Any other stats you’d like to see here
