@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { QuoteForm } from '@/components/quotes/QuoteForm'
+import { QuoteCreationWizard } from '@/components/quotes/QuoteCreationWizard'
 
 export default function CreateQuotePage() {
   return (
@@ -7,7 +7,7 @@ export default function CreateQuotePage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Create New Quote</h1>
-          <p className="text-gray-600">Fill in the details to create a new quote</p>
+          <p className="text-gray-600">Configure your quote details, items, and approval workflow</p>
         </div>
         <Link 
           href="/quotes"
@@ -17,7 +17,7 @@ export default function CreateQuotePage() {
         </Link>
       </div>
 
-      <QuoteForm />
+      <QuoteCreationWizard />
     </div>
   )
 }

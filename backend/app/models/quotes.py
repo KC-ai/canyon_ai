@@ -148,6 +148,11 @@ class QuoteBase(BaseModel):
 
 class QuoteCreate(QuoteBase):
     items: List[QuoteItemCreate] = Field(default_factory=list, max_items=100, description="Quote items")
+
+
+class QuoteWithWorkflowCreate(QuoteBase):
+    items: List[QuoteItemCreate] = Field(default_factory=list, max_items=100, description="Quote items")
+    workflow: Optional[Dict] = Field(None, description="Workflow configuration")
     
     @field_validator('items')
     @classmethod
@@ -155,6 +160,7 @@ class QuoteCreate(QuoteBase):
         if len(v) == 0:
             raise ValueError('Quote must contain at least one item')
         return v
+    
     
     @model_validator(mode='after')
     def validate_total_amount(self):
@@ -240,6 +246,7 @@ class Quote(QuoteBase):
     user_id: str = Field(..., description="User who owns this quote")
     items: List[QuoteItem] = Field(default_factory=list, description="Quote items")
     total_amount: Decimal = Field(default=Decimal('0'), description="Total quote amount")
+    workflow_id: Optional[str] = Field(None, description="Associated workflow identifier")
     created_at: datetime = Field(..., description="Quote creation timestamp")
     updated_at: datetime = Field(..., description="Quote last update timestamp")
     

@@ -138,3 +138,6 @@ async def get_dev_quotes():
 
 # Include API routers
 app.include_router(quotes.router, prefix="/api/quotes", tags=["Quotes"])
+
+from app.api import workflows
+app.include_router(workflows.router, prefix="/api/workflows", tags=["Workflows"])

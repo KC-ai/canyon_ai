@@ -106,10 +106,43 @@ class QuoteService:
                 updated_at=now
             )
             
+            # Create workflow for quotes that need approval
+            workflow_id = None
+            needs_workflow = (quote_data.status.value == 'pending') or (total_amount >= Decimal('10000'))
+            
+            logger.info(f"Checking workflow need: status={quote_data.status.value}, amount=${total_amount}, needs_workflow={needs_workflow}")
+            
+            if needs_workflow:
+                try:
+                    from app.services.workflow_service import WorkflowService
+                    workflow = await WorkflowService.create_default_workflow(quote, user_id)
+                    workflow_id = workflow.id
+                    
+                    # Update quote with workflow_id
+                    quote_dict["workflow_id"] = workflow_id
+                    quotes_db[quote_id] = quote_dict
+                    await storage.save_data("quotes", quotes_db)
+                    
+                    logger.info(f"Workflow created for quote: {workflow_id}", extra={
+                        "quote_id": quote_id,
+                        "workflow_id": workflow_id,
+                        "quote_amount": float(total_amount)
+                    })
+                except Exception as e:
+                    logger.error(f"Failed to create workflow for quote {quote_id}: {str(e)}")
+                    # Log the full error for debugging
+                    import traceback
+                    logger.error(f"Workflow creation error details: {traceback.format_exc()}")
+                    # Continue without workflow - non-critical failure
+            
+            # Update quote object with workflow_id
+            quote.workflow_id = workflow_id
+            
             logger.info(f"Quote created successfully: {quote_id}", extra={
                 "quote_id": quote_id,
                 "user_id": user_id,
-                "total_amount": float(total_amount)
+                "total_amount": float(total_amount),
+                "workflow_id": workflow_id
             })
             
             return quote
@@ -120,6 +153,61 @@ class QuoteService:
                 "error": str(e)
             })
             raise StorageError("create_quote", str(e))
+    
+    @staticmethod
+    async def create_quote_with_workflow(quote_data: QuoteCreate, workflow_config: Optional[Dict], user_id: str) -> Quote:
+        """Create a new quote with custom workflow configuration"""
+        try:
+            logger.info(f"Creating quote with custom workflow for user {user_id}", extra={
+                "user_id": user_id,
+                "quote_title": quote_data.title,
+                "has_custom_workflow": workflow_config is not None
+            })
+            
+            # First create the quote normally
+            quote = await QuoteService.create_quote(quote_data, user_id)
+            
+            # If custom workflow provided, replace the default workflow
+            if workflow_config:
+                try:
+                    from app.services.workflow_service import WorkflowService
+                    from app.models.workflows import ApprovalWorkflowCreate
+                    
+                    # Convert workflow_config dict to ApprovalWorkflowCreate
+                    workflow_create = ApprovalWorkflowCreate(**workflow_config)
+                    
+                    # Create custom workflow
+                    workflow = await WorkflowService.create_workflow(workflow_create, user_id, quote.id)
+                    
+                    # Update quote with new workflow_id
+                    quotes_db = await storage.load_data("quotes")
+                    quote_dict = quotes_db.get(quote.id)
+                    if quote_dict:
+                        quote_dict["workflow_id"] = workflow.id
+                        quotes_db[quote.id] = quote_dict
+                        await storage.save_data("quotes", quotes_db)
+                        
+                        # Update quote object
+                        quote.workflow_id = workflow.id
+                        
+                        logger.info(f"Custom workflow created and assigned: {workflow.id}", extra={
+                            "quote_id": quote.id,
+                            "workflow_id": workflow.id,
+                            "workflow_steps": len(workflow.steps)
+                        })
+                    
+                except Exception as e:
+                    logger.warning(f"Failed to create custom workflow for quote {quote.id}: {str(e)}")
+                    # Continue with default workflow - quote was already created successfully
+            
+            return quote
+            
+        except Exception as e:
+            logger.error(f"Failed to create quote with workflow: {str(e)}", extra={
+                "user_id": user_id,
+                "error": str(e)
+            })
+            raise StorageError("create_quote_with_workflow", str(e))
     
     @staticmethod
     async def get_quote(quote_id: str, user_id: str) -> Quote:
@@ -170,6 +258,7 @@ class QuoteService:
                 valid_until=datetime.fromisoformat(quote_dict["valid_until"]) if quote_dict["valid_until"] else None,
                 items=items,
                 total_amount=Decimal(quote_dict["total_amount"]),
+                workflow_id=quote_dict.get("workflow_id"),
                 created_at=datetime.fromisoformat(quote_dict["created_at"]),
                 updated_at=datetime.fromisoformat(quote_dict["updated_at"])
             )
@@ -226,6 +315,7 @@ class QuoteService:
                         valid_until=datetime.fromisoformat(quote_dict["valid_until"]) if quote_dict["valid_until"] else None,
                         items=items,
                         total_amount=Decimal(quote_dict["total_amount"]),
+                        workflow_id=quote_dict.get("workflow_id"),
                         created_at=datetime.fromisoformat(quote_dict["created_at"]),
                         updated_at=datetime.fromisoformat(quote_dict["updated_at"])
                     )

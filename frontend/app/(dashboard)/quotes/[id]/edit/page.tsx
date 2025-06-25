@@ -9,6 +9,9 @@ import { showToast } from '@/lib/toast'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { workflowsApi } from '@/lib/api'
+import WorkflowBuilder from '@/components/workflows/WorkflowBuilder'
+import { ApprovalWorkflow, ApprovalWorkflowCreate } from '@/types/workflows'
 
 export default function EditQuotePage() {
   const params = useParams()
@@ -31,6 +34,11 @@ export default function EditQuotePage() {
   const [items, setItems] = useState<QuoteItemCreate[]>([
     { name: '', description: '', quantity: 1, unit_price: 0 }
   ])
+
+  const [workflow, setWorkflow] = useState<ApprovalWorkflow | null>(null)
+  const [workflowLoading, setWorkflowLoading] = useState(true)
+  const [workflowError, setWorkflowError] = useState<string>('')
+  const [workflowSaving, setWorkflowSaving] = useState(false)
 
   useEffect(() => {
     const fetchQuote = async () => {
@@ -71,6 +79,33 @@ export default function EditQuotePage() {
       fetchQuote()
     }
   }, [quoteId])
+
+  // Separate effect for loading workflow after quote is loaded
+  useEffect(() => {
+    const fetchWorkflow = async () => {
+      if (!quote || !quote.workflow_id) {
+        setWorkflow(null)
+        setWorkflowLoading(false)
+        return
+      }
+      try {
+        setWorkflowLoading(true)
+        const wf = await workflowsApi.getWorkflow(quote.workflow_id)
+        setWorkflow(wf)
+        setWorkflowError('')
+      } catch (err) {
+        setWorkflowError('Failed to load workflow')
+        setWorkflow(null)
+        console.error('Error fetching workflow:', err)
+      } finally {
+        setWorkflowLoading(false)
+      }
+    }
+
+    if (quote) {
+      fetchWorkflow()
+    }
+  }, [quote])
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }))
@@ -116,6 +151,21 @@ export default function EditQuotePage() {
       console.error('Error updating quote:', err)
     } finally {
       setSaving(false)
+    }
+  }
+
+  // Handler for saving workflow changes
+  const handleWorkflowSave = async (workflowData: ApprovalWorkflowCreate) => {
+    if (!workflow) return
+    setWorkflowSaving(true)
+    try {
+      const updated = await workflowsApi.updateWorkflow(workflow.id, workflowData)
+      setWorkflow(updated)
+      showToast.success('Workflow updated successfully!')
+    } catch (err) {
+      showToast.error('Failed to update workflow')
+    } finally {
+      setWorkflowSaving(false)
     }
   }
 
@@ -295,6 +345,25 @@ export default function EditQuotePage() {
               </p>
             </div>
           </div>
+        </div>
+
+        {/* Approval Workflow Section */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold mb-4">Approval Workflow</h3>
+          {workflowLoading ? (
+            <div className="text-gray-600">Loading workflow...</div>
+          ) : workflow ? (
+            <WorkflowBuilder
+              initialWorkflow={workflow}
+              onSave={handleWorkflowSave}
+              onCancel={() => {}}
+              loading={workflowSaving}
+              showSubmit={false}
+            />
+          ) : (
+            <div className="text-gray-500">No workflow found for this quote.</div>
+          )}
+          {workflowError && <div className="text-red-600 mt-2">{workflowError}</div>}
         </div>
 
         {/* Submit */}

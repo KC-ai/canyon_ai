@@ -24,3 +24,6 @@ export interface PaginatedResponse<T> {
 
 // Type definitions barrel exports
 export * from './quotes'
+export * from './workflows'
+export * from './auth'
+export * from './analytics'

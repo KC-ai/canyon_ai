@@ -1,33 +1,85 @@
 'use client'
 
+import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { QuoteStatus } from '@/types/quotes'
+import { ApprovalWorkflow, WorkflowActionRequest } from '@/types/workflows'
 import { useRealtimeQuotes } from '@/hooks/useRealtimeQuotes'
 import { showToast } from '@/lib/toast'
+import QuoteCard from './QuoteCard'
 
 export function QuoteList() {
   const { quotes, loading, error, loadQuotes } = useRealtimeQuotes()
+  const [workflows, setWorkflows] = useState<Record<string, ApprovalWorkflow>>({})
+  const [loadingWorkflows, setLoadingWorkflows] = useState(false)
 
-  const getStatusColor = (status: QuoteStatus) => {
-    switch (status) {
-      case QuoteStatus.APPROVED:
-        return 'text-green-600 bg-green-100'
-      case QuoteStatus.PENDING:
-        return 'text-yellow-600 bg-yellow-100'
-      case QuoteStatus.REJECTED:
-        return 'text-red-600 bg-red-100'
-      case QuoteStatus.EXPIRED:
-        return 'text-gray-600 bg-gray-100'
-      default:
-        return 'text-blue-600 bg-blue-100'
+  // Load workflows for quotes that have workflow_id
+  useEffect(() => {
+    const loadWorkflows = async () => {
+      if (!quotes.length) return
+      
+      const quotesWithWorkflows = quotes.filter(quote => quote.workflow_id)
+      if (!quotesWithWorkflows.length) return
+      
+      setLoadingWorkflows(true)
+      try {
+        const workflowPromises = quotesWithWorkflows.map(async (quote) => {
+          if (!quote.workflow_id) return null
+          
+          try {
+            const { workflowsApi } = await import('../../lib/api')
+            const workflow = await workflowsApi.getWorkflow(quote.workflow_id)
+            return { quoteId: quote.id, workflow }
+          } catch (error) {
+            console.warn(`Failed to load workflow ${quote.workflow_id}:`, error)
+            return null
+          }
+        })
+        
+        const results = await Promise.all(workflowPromises)
+        const newWorkflows: Record<string, ApprovalWorkflow> = {}
+        
+        results.forEach(result => {
+          if (result?.workflow) {
+            newWorkflows[result.quoteId] = result.workflow
+          }
+        })
+        
+        setWorkflows(newWorkflows)
+      } catch (error) {
+        console.error('Failed to load workflows:', error)
+      } finally {
+        setLoadingWorkflows(false)
+      }
     }
-  }
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount)
+    
+    loadWorkflows()
+  }, [quotes])
+  
+  // Handle workflow actions
+  const handleWorkflowAction = async (workflowId: string, stepOrder: number, action: WorkflowActionRequest) => {
+    try {
+      const { workflowsApi } = await import('../../lib/api')
+      const updatedWorkflow = await workflowsApi.performWorkflowAction(workflowId, stepOrder, action)
+      
+      // Update the workflow in state
+      setWorkflows(prev => {
+        const updated = { ...prev }
+        Object.keys(updated).forEach(quoteId => {
+          if (updated[quoteId].id === workflowId) {
+            updated[quoteId] = updatedWorkflow
+          }
+        })
+        return updated
+      })
+      
+      // Reload quotes to get updated status
+      await loadQuotes()
+      
+    } catch (error) {
+      console.error('Workflow action failed:', error)
+      throw error
+    }
   }
 
   if (loading) {
@@ -78,38 +130,26 @@ export function QuoteList() {
   }
 
   return (
-    <div className="space-y-4">
-      {quotes.map((quote) => (
-        <Link 
-          key={quote.id} 
-          href={`/quotes/${quote.id}`}
-          className={`block bg-white rounded-lg shadow hover:shadow-md transition-shadow p-6 ${
-            quote.id.startsWith('temp-') ? 'opacity-60 border-2 border-dashed border-blue-300' : ''
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-2">
-                <h3 className="text-lg font-semibold text-gray-900">{quote.title}</h3>
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(quote.status)}`}>
-                  {quote.status.charAt(0).toUpperCase() + quote.status.slice(1)}
-                </span>
-              </div>
-              <p className="text-gray-600 mb-1">{quote.customer_name}</p>
-              <p className="text-sm text-gray-500">
-                {quote.items.length} item{quote.items.length !== 1 ? 's' : ''}
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-2xl font-bold text-gray-900">
-                {formatCurrency(quote.total_amount)}
-              </p>
-              <p className="text-sm text-gray-500">
-                Created {new Date(quote.created_at).toLocaleDateString()}
-              </p>
-            </div>
+    <div className="space-y-6">
+      {loadingWorkflows && (
+        <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+            <span className="text-blue-800 text-sm">Loading approval workflows...</span>
           </div>
-        </Link>
+        </div>
+      )}
+      
+      {quotes.map((quote) => (
+        <QuoteCard
+          key={quote.id}
+          quote={quote}
+          workflow={quote.workflow_id ? workflows[quote.id] : undefined}
+          onWorkflowAction={handleWorkflowAction}
+          showWorkflow={true}
+          compact={false}
+          useRealtime={true}
+        />
       ))}
     </div>
   )

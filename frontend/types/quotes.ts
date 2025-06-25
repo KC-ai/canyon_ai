@@ -13,6 +13,8 @@ export interface QuoteItem {
   description?: string
   quantity: number
   unit_price: number
+  discount_percent?: number
+  discount_amount?: number
   created_at: string
   updated_at: string
 }
@@ -22,6 +24,8 @@ export interface QuoteItemCreate {
   description?: string
   quantity: number
   unit_price: number
+  discount_percent?: number
+  discount_amount?: number
 }
 
 export interface Quote {
@@ -34,9 +38,13 @@ export interface Quote {
   status: QuoteStatus
   valid_until?: string
   items: QuoteItem[]
+  subtotal_amount: number
+  discount_percent?: number
+  discount_amount?: number
   total_amount: number
   created_at: string
   updated_at: string
+  workflow_id?: string
 }
 
 export interface QuoteCreate {
@@ -47,6 +55,8 @@ export interface QuoteCreate {
   status?: QuoteStatus
   valid_until?: string
   items: QuoteItemCreate[]
+  discount_percent?: number
+  discount_amount?: number
 }
 
 export interface QuoteUpdate {

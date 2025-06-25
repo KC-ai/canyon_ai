@@ -2,8 +2,6 @@
 
 import Link from 'next/link'
 import { QuoteList } from '@/components/quotes/QuoteList'
-import { RealtimeTest } from '@/components/quotes/RealtimeTest'
-import { RealtimeStatus } from '@/components/quotes/RealtimeStatus'
 
 export default function QuotesPage() {
   return (
@@ -11,10 +9,7 @@ export default function QuotesPage() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Quotes</h1>
-          <div className="flex items-center gap-4">
-            <p className="text-gray-600">Manage your quotes and proposals</p>
-            <RealtimeStatus />
-          </div>
+          <p className="text-gray-600">Manage your quotes and proposals</p>
         </div>
         <Link 
           href="/quotes/create"
@@ -24,7 +19,6 @@ export default function QuotesPage() {
         </Link>
       </div>
       
-      <RealtimeTest />
       <QuoteList />
     </div>
   )

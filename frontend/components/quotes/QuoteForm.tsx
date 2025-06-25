@@ -28,12 +28,33 @@ export function QuoteForm() {
   ])
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }))
+    let processedValue = value
+    
+    // Auto-correct leading zeros in number fields
+    if (field === 'unit_price' || field === 'quantity') {
+      // Remove leading zeros but keep decimal points
+      processedValue = value.replace(/^0+(\d)/, '$1')
+    }
+    
+    setFormData(prev => ({ ...prev, [field]: processedValue }))
   }
 
   const handleItemChange = (index: number, field: string, value: string | number) => {
+    let processedValue = value
+    
+    // Auto-correct leading zeros in number fields
+    if (typeof value === 'string' && (field === 'unit_price' || field === 'quantity')) {
+      // Remove leading zeros but keep decimal points
+      processedValue = value.replace(/^0+(\d)/, '$1')
+      // Convert to number if it's a valid number
+      const numValue = parseFloat(processedValue as string)
+      if (!isNaN(numValue)) {
+        processedValue = numValue
+      }
+    }
+    
     const updatedItems = [...items]
-    updatedItems[index] = { ...updatedItems[index], [field]: value }
+    updatedItems[index] = { ...updatedItems[index], [field]: processedValue }
     setItems(updatedItems)
   }
 
@@ -73,6 +94,15 @@ export function QuoteForm() {
       if (!formData.title.trim()) {
         setError('Quote title is required')
         return
+      }
+      
+      // Email validation
+      if (formData.customer_email.trim()) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        if (!emailRegex.test(formData.customer_email.trim())) {
+          setError('Please enter a valid email address')
+          return
+        }
       }
       
       if (validItems.length === 0) {
@@ -147,6 +177,18 @@ export function QuoteForm() {
                 type="email"
                 value={formData.customer_email}
                 onChange={(e) => handleInputChange('customer_email', e.target.value)}
+                onBlur={(e) => {
+                  const email = e.target.value.trim()
+                  if (email) {
+                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+                    if (!emailRegex.test(email)) {
+                      setError('Please enter a valid email address')
+                    } else {
+                      setError('')
+                    }
+                  }
+                }}
+                className={error.includes('email') ? 'border-red-300 focus:ring-red-500' : ''}
               />
             </div>
             <div className="md:col-span-2">

@@ -36,6 +36,15 @@ class AuthUser:
 
 async def verify_token(token: str) -> AuthUser:
     """Verify JWT token and return user information"""
+    # Development mode bypass
+    if os.getenv("ENVIRONMENT") == "development" and token.startswith("dev-token-"):
+        user_id = token.replace("dev-token-", "")
+        return AuthUser(
+            user_id=user_id,
+            email=f"{user_id}@dev.local",
+            role="user"
+        )
+    
     try:
         # Decode JWT token with Supabase-compatible options
         payload = jwt.decode(
