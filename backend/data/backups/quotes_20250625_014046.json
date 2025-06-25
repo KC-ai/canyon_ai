@@ -71,30 +71,17 @@
     "created_at": "2025-06-25T01:14:52.176730",
     "updated_at": "2025-06-25T01:14:52.176730"
   },
-  "a581b7a7-1ddd-4fe3-ad7d-5f50d488a301": {
-    "id": "a581b7a7-1ddd-4fe3-ad7d-5f50d488a301",
-    "user_id": "27ff9cb9-e46f-4c45-af1e-2dedfece9ccb",
-    "customer_name": "Acme Corp",
-    "customer_email": "contact@acme.com",
-    "title": "Enterprise Software License",
-    "description": "Annual software license for enterprise solution",
-    "status": "pending",
-    "valid_until": null,
-    "total_amount": "12500.00",
-    "created_at": "2025-06-25T01:46:38.552574",
-    "updated_at": "2025-06-25T01:46:38.552574"
-  },
-  "bcea2658-220c-4d46-a105-20267b873335": {
-    "id": "bcea2658-220c-4d46-a105-20267b873335",
-    "user_id": "27ff9cb9-e46f-4c45-af1e-2dedfece9ccb",
-    "customer_name": "Tech Solutions",
-    "customer_email": "info@techsolutions.com",
-    "title": "Cloud Infrastructure Setup",
-    "description": "Initial cloud infrastructure deployment",
+  "bc4c3e4f-5519-4be5-af04-23bc15a18717": {
+    "id": "bc4c3e4f-5519-4be5-af04-23bc15a18717",
+    "user_id": "54da6f6f-39b0-4dc9-9cf9-7cff37c2577b",
+    "customer_name": "Kashyap",
+    "customer_email": "kash@test.co",
+    "title": "Test Quote 1",
+    "description": "This is a test",
     "status": "draft",
     "valid_until": null,
-    "total_amount": "9750.00",
-    "created_at": "2025-06-25T01:46:38.562338",
-    "updated_at": "2025-06-25T01:46:38.562338"
+    "total_amount": "100.00",
+    "created_at": "2025-06-25T01:40:32.631382",
+    "updated_at": "2025-06-25T01:40:39.148351"
   }
 }

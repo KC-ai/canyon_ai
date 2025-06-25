@@ -83,18 +83,5 @@
     "total_amount": "12500.00",
     "created_at": "2025-06-25T01:46:38.552574",
     "updated_at": "2025-06-25T01:46:38.552574"
-  },
-  "bcea2658-220c-4d46-a105-20267b873335": {
-    "id": "bcea2658-220c-4d46-a105-20267b873335",
-    "user_id": "27ff9cb9-e46f-4c45-af1e-2dedfece9ccb",
-    "customer_name": "Tech Solutions",
-    "customer_email": "info@techsolutions.com",
-    "title": "Cloud Infrastructure Setup",
-    "description": "Initial cloud infrastructure deployment",
-    "status": "draft",
-    "valid_until": null,
-    "total_amount": "9750.00",
-    "created_at": "2025-06-25T01:46:38.562338",
-    "updated_at": "2025-06-25T01:46:38.562338"
   }
 }

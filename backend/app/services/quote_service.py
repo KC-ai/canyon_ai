@@ -1,161 +1,45 @@
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from datetime import datetime
 import uuid
-import json
-import os
+from decimal import Decimal
+import asyncio
 from app.models.quotes import Quote, QuoteCreate, QuoteUpdate, QuoteItem, QuoteItemCreate
+from app.core.storage import storage
+from app.core.errors import (
+    QuoteNotFoundError, 
+    QuotePermissionError, 
+    QuoteValidationError, 
+    StorageError
+)
+from app.core.logging_config import get_logger
 
-# File-based storage for demo purposes
-DATA_DIR = "data"
-QUOTES_FILE = os.path.join(DATA_DIR, "quotes.json")
-ITEMS_FILE = os.path.join(DATA_DIR, "quote_items.json")
-
-# Ensure data directory exists
-os.makedirs(DATA_DIR, exist_ok=True)
-
-def load_data():
-    """Load data from JSON files"""
-    quotes_db = {}
-    quote_items_db = {}
-    
-    if os.path.exists(QUOTES_FILE):
-        try:
-            with open(QUOTES_FILE, 'r') as f:
-                quotes_db = json.load(f)
-        except (json.JSONDecodeError, FileNotFoundError):
-            pass
-    
-    if os.path.exists(ITEMS_FILE):
-        try:
-            with open(ITEMS_FILE, 'r') as f:
-                quote_items_db = json.load(f)
-        except (json.JSONDecodeError, FileNotFoundError):
-            pass
-    
-    return quotes_db, quote_items_db
-
-def save_data(quotes_db: dict, quote_items_db: dict):
-    """Save data to JSON files"""
-    try:
-        with open(QUOTES_FILE, 'w') as f:
-            json.dump(quotes_db, f, default=str, indent=2)
-        with open(ITEMS_FILE, 'w') as f:
-            json.dump(quote_items_db, f, default=str, indent=2)
-    except Exception as e:
-        print(f"Error saving data: {e}")
-
-# Load existing data on startup
-quotes_db, quote_items_db = load_data()
-
+logger = get_logger("quote_service")
 
 class QuoteService:
+    """Production-ready quote service with comprehensive error handling and validation"""
     
     @staticmethod
-    def create_quote(quote_data: QuoteCreate, user_id: str) -> Quote:
-        quote_id = str(uuid.uuid4())
-        now = datetime.utcnow()
-        
-        # Create quote items
-        items = []
-        total_amount = 0.0
-        
-        for item_data in quote_data.items:
-            item_id = str(uuid.uuid4())
-            item_dict = {
-                "id": item_id,
-                "quote_id": quote_id,
-                "name": item_data.name,
-                "description": item_data.description,
-                "quantity": item_data.quantity,
-                "unit_price": item_data.unit_price,
-                "created_at": now,
-                "updated_at": now
-            }
-            quote_items_db[item_id] = item_dict
-            items.append(QuoteItem(**item_dict))
-            total_amount += item_data.quantity * item_data.unit_price
-        
-        # Create quote
-        quote_dict = {
-            "id": quote_id,
-            "user_id": user_id,
-            "customer_name": quote_data.customer_name,
-            "customer_email": quote_data.customer_email,
-            "title": quote_data.title,
-            "description": quote_data.description,
-            "status": quote_data.status,
-            "valid_until": quote_data.valid_until,
-            "items": items,
-            "total_amount": total_amount,
-            "created_at": now,
-            "updated_at": now
-        }
-        
-        quotes_db[quote_id] = quote_dict
-        save_data(quotes_db, quote_items_db)
-        return Quote(**quote_dict)
-    
-    @staticmethod
-    def get_quote(quote_id: str, user_id: str) -> Optional[Quote]:
-        quote_dict = quotes_db.get(quote_id)
-        if not quote_dict or quote_dict["user_id"] != user_id:
-            return None
-        
-        # Get quote items
-        items = []
-        for item_id, item_dict in quote_items_db.items():
-            if item_dict["quote_id"] == quote_id:
-                items.append(QuoteItem(**item_dict))
-        
-        quote_dict["items"] = items
-        return Quote(**quote_dict)
-    
-    @staticmethod
-    def get_quotes(user_id: str, skip: int = 0, limit: int = 100) -> List[Quote]:
-        user_quotes = []
-        for quote_dict in quotes_db.values():
-            if quote_dict["user_id"] == user_id:
-                # Get quote items
-                items = []
-                for item_id, item_dict in quote_items_db.items():
-                    if item_dict["quote_id"] == quote_dict["id"]:
-                        items.append(QuoteItem(**item_dict))
-                
-                quote_dict_copy = quote_dict.copy()
-                quote_dict_copy["items"] = items
-                user_quotes.append(Quote(**quote_dict_copy))
-        
-        # Sort by created_at desc
-        user_quotes.sort(key=lambda x: x.created_at, reverse=True)
-        return user_quotes[skip:skip + limit]
-    
-    @staticmethod
-    def update_quote(quote_id: str, quote_update: QuoteUpdate, user_id: str) -> Optional[Quote]:
-        quote_dict = quotes_db.get(quote_id)
-        if not quote_dict or quote_dict["user_id"] != user_id:
-            return None
-        
-        # Update fields (excluding items which we handle separately)
-        update_data = quote_update.dict(exclude_unset=True, exclude={'items'})
-        for field, value in update_data.items():
-            quote_dict[field] = value
-        
-        # Handle items update if provided
-        if quote_update.items is not None:
-            # Delete existing items for this quote
-            items_to_delete = []
-            for item_id, item_dict in quote_items_db.items():
-                if item_dict["quote_id"] == quote_id:
-                    items_to_delete.append(item_id)
+    async def create_quote(quote_data: QuoteCreate, user_id: str) -> Quote:
+        """Create a new quote with validation and error handling"""
+        try:
+            logger.info(f"Creating quote for user {user_id}", extra={
+                "user_id": user_id,
+                "quote_title": quote_data.title,
+                "item_count": len(quote_data.items)
+            })
             
-            for item_id in items_to_delete:
-                del quote_items_db[item_id]
-            
-            # Create new items
-            total_amount = 0.0
+            quote_id = str(uuid.uuid4())
             now = datetime.utcnow()
             
-            for item_data in quote_update.items:
+            # Load existing data
+            quotes_db = await storage.load_data("quotes")
+            quote_items_db = await storage.load_data("quote_items")
+            
+            # Create quote items
+            items = []
+            total_amount = Decimal('0')
+            
+            for item_data in quote_data.items:
                 item_id = str(uuid.uuid4())
                 item_dict = {
                     "id": item_id,
@@ -163,110 +47,398 @@ class QuoteService:
                     "name": item_data.name,
                     "description": item_data.description,
                     "quantity": item_data.quantity,
-                    "unit_price": item_data.unit_price,
-                    "created_at": now,
-                    "updated_at": now
+                    "unit_price": str(item_data.unit_price),  # Store as string for precision
+                    "created_at": now.isoformat(),
+                    "updated_at": now.isoformat()
                 }
                 quote_items_db[item_id] = item_dict
-                total_amount += item_data.quantity * item_data.unit_price
+                
+                # Create QuoteItem for response
+                quote_item = QuoteItem(
+                    id=item_id,
+                    quote_id=quote_id,
+                    name=item_data.name,
+                    description=item_data.description,
+                    quantity=item_data.quantity,
+                    unit_price=item_data.unit_price,
+                    created_at=now,
+                    updated_at=now
+                )
+                items.append(quote_item)
+                total_amount += item_data.total_price
             
-            # Update total amount
-            quote_dict["total_amount"] = total_amount
-        
-        quote_dict["updated_at"] = datetime.utcnow()
-        quotes_db[quote_id] = quote_dict
-        save_data(quotes_db, quote_items_db)
-        
-        return QuoteService.get_quote(quote_id, user_id)
-    
-    @staticmethod
-    def delete_quote(quote_id: str, user_id: str) -> bool:
-        quote_dict = quotes_db.get(quote_id)
-        if not quote_dict or quote_dict["user_id"] != user_id:
-            return False
-        
-        # Delete quote items
-        items_to_delete = []
-        for item_id, item_dict in quote_items_db.items():
-            if item_dict["quote_id"] == quote_id:
-                items_to_delete.append(item_id)
-        
-        for item_id in items_to_delete:
-            del quote_items_db[item_id]
-        
-        # Delete quote
-        del quotes_db[quote_id]
-        save_data(quotes_db, quote_items_db)
-        return True
-    
-    @staticmethod
-    def add_sample_data(user_id: str):
-        """Add some sample quotes for testing"""
-        if quotes_db:
-            return  # Only add once
-        
-        sample_quotes = [
-            QuoteCreate(
-                customer_name="Acme Corp",
-                customer_email="contact@acme.com",
-                title="Enterprise Software License",
-                description="Annual software license for enterprise solution",
-                status="pending",
-                items=[
-                    QuoteItemCreate(
-                        name="Enterprise License",
-                        description="Annual license for 100 users",
-                        quantity=1,
-                        unit_price=12500.00
-                    )
-                ]
-            ),
-            QuoteCreate(
-                customer_name="Tech Solutions",
-                customer_email="info@techsolutions.com",
-                title="Cloud Infrastructure Setup",
-                description="Initial cloud infrastructure deployment",
-                status="draft",
-                items=[
-                    QuoteItemCreate(
-                        name="Server Setup",
-                        description="Initial server configuration",
-                        quantity=3,
-                        unit_price=2500.00
-                    ),
-                    QuoteItemCreate(
-                        name="Database Setup",
-                        description="Database configuration and optimization",
-                        quantity=1,
-                        unit_price=2250.00
-                    )
-                ]
-            ),
-            QuoteCreate(
-                customer_name="StartupXYZ",
-                customer_email="founder@startupxyz.com",
-                title="Custom Development Project",
-                description="Full-stack web application development",
-                status="approved",
-                items=[
-                    QuoteItemCreate(
-                        name="Frontend Development",
-                        description="React frontend application",
-                        quantity=80,
-                        unit_price=150.00
-                    ),
-                    QuoteItemCreate(
-                        name="Backend Development",
-                        description="Node.js API development",
-                        quantity=60,
-                        unit_price=175.00
-                    )
-                ]
+            # Create quote
+            quote_dict = {
+                "id": quote_id,
+                "user_id": user_id,
+                "customer_name": quote_data.customer_name,
+                "customer_email": quote_data.customer_email,
+                "title": quote_data.title,
+                "description": quote_data.description,
+                "status": quote_data.status.value,
+                "valid_until": quote_data.valid_until.isoformat() if quote_data.valid_until else None,
+                "total_amount": str(total_amount),
+                "created_at": now.isoformat(),
+                "updated_at": now.isoformat()
+            }
+            
+            quotes_db[quote_id] = quote_dict
+            
+            # Save data atomically
+            await asyncio.gather(
+                storage.save_data("quotes", quotes_db),
+                storage.save_data("quote_items", quote_items_db)
             )
-        ]
-        
-        for quote_data in sample_quotes:
-            QuoteService.create_quote(quote_data, user_id)
-        
-        # Save after adding sample data
-        save_data(quotes_db, quote_items_db)
+            
+            # Create response quote
+            quote = Quote(
+                id=quote_id,
+                user_id=user_id,
+                customer_name=quote_data.customer_name,
+                customer_email=quote_data.customer_email,
+                title=quote_data.title,
+                description=quote_data.description,
+                status=quote_data.status,
+                valid_until=quote_data.valid_until,
+                items=items,
+                total_amount=total_amount,
+                created_at=now,
+                updated_at=now
+            )
+            
+            logger.info(f"Quote created successfully: {quote_id}", extra={
+                "quote_id": quote_id,
+                "user_id": user_id,
+                "total_amount": float(total_amount)
+            })
+            
+            return quote
+            
+        except Exception as e:
+            logger.error(f"Failed to create quote: {str(e)}", extra={
+                "user_id": user_id,
+                "error": str(e)
+            })
+            raise StorageError("create_quote", str(e))
+    
+    @staticmethod
+    async def get_quote(quote_id: str, user_id: str) -> Quote:
+        """Get a specific quote by ID with permission checking"""
+        try:
+            logger.debug(f"Fetching quote {quote_id} for user {user_id}")
+            
+            quotes_db = await storage.load_data("quotes")
+            quote_items_db = await storage.load_data("quote_items")
+            
+            quote_dict = quotes_db.get(quote_id)
+            if not quote_dict:
+                logger.warning(f"Quote not found: {quote_id}")
+                raise QuoteNotFoundError(quote_id)
+            
+            # Check permissions
+            if quote_dict["user_id"] != user_id:
+                logger.warning(f"Permission denied for quote {quote_id} by user {user_id}")
+                raise QuotePermissionError(user_id, quote_id)
+            
+            # Get quote items
+            items = []
+            for item_id, item_dict in quote_items_db.items():
+                if item_dict["quote_id"] == quote_id:
+                    item = QuoteItem(
+                        id=item_dict["id"],
+                        quote_id=item_dict["quote_id"],
+                        name=item_dict["name"],
+                        description=item_dict["description"],
+                        quantity=item_dict["quantity"],
+                        unit_price=Decimal(item_dict["unit_price"]),
+                        created_at=datetime.fromisoformat(item_dict["created_at"]),
+                        updated_at=datetime.fromisoformat(item_dict["updated_at"])
+                    )
+                    items.append(item)
+            
+            # Sort items by creation date
+            items.sort(key=lambda x: x.created_at)
+            
+            quote = Quote(
+                id=quote_dict["id"],
+                user_id=quote_dict["user_id"],
+                customer_name=quote_dict["customer_name"],
+                customer_email=quote_dict["customer_email"],
+                title=quote_dict["title"],
+                description=quote_dict["description"],
+                status=quote_dict["status"],
+                valid_until=datetime.fromisoformat(quote_dict["valid_until"]) if quote_dict["valid_until"] else None,
+                items=items,
+                total_amount=Decimal(quote_dict["total_amount"]),
+                created_at=datetime.fromisoformat(quote_dict["created_at"]),
+                updated_at=datetime.fromisoformat(quote_dict["updated_at"])
+            )
+            
+            logger.debug(f"Quote fetched successfully: {quote_id}")
+            return quote
+            
+        except (QuoteNotFoundError, QuotePermissionError):
+            raise
+        except Exception as e:
+            logger.error(f"Failed to get quote {quote_id}: {str(e)}")
+            raise StorageError("get_quote", str(e))
+    
+    @staticmethod
+    async def get_quotes(user_id: str, skip: int = 0, limit: int = 100) -> List[Quote]:
+        """Get paginated list of quotes for a user"""
+        try:
+            logger.debug(f"Fetching quotes for user {user_id} (skip={skip}, limit={limit})")
+            
+            quotes_db = await storage.load_data("quotes")
+            quote_items_db = await storage.load_data("quote_items")
+            
+            # Filter quotes by user
+            user_quotes = []
+            for quote_dict in quotes_db.values():
+                if quote_dict["user_id"] == user_id:
+                    # Get quote items
+                    items = []
+                    for item_id, item_dict in quote_items_db.items():
+                        if item_dict["quote_id"] == quote_dict["id"]:
+                            item = QuoteItem(
+                                id=item_dict["id"],
+                                quote_id=item_dict["quote_id"],
+                                name=item_dict["name"],
+                                description=item_dict["description"],
+                                quantity=item_dict["quantity"],
+                                unit_price=Decimal(item_dict["unit_price"]),
+                                created_at=datetime.fromisoformat(item_dict["created_at"]),
+                                updated_at=datetime.fromisoformat(item_dict["updated_at"])
+                            )
+                            items.append(item)
+                    
+                    # Sort items by creation date
+                    items.sort(key=lambda x: x.created_at)
+                    
+                    quote = Quote(
+                        id=quote_dict["id"],
+                        user_id=quote_dict["user_id"],
+                        customer_name=quote_dict["customer_name"],
+                        customer_email=quote_dict["customer_email"],
+                        title=quote_dict["title"],
+                        description=quote_dict["description"],
+                        status=quote_dict["status"],
+                        valid_until=datetime.fromisoformat(quote_dict["valid_until"]) if quote_dict["valid_until"] else None,
+                        items=items,
+                        total_amount=Decimal(quote_dict["total_amount"]),
+                        created_at=datetime.fromisoformat(quote_dict["created_at"]),
+                        updated_at=datetime.fromisoformat(quote_dict["updated_at"])
+                    )
+                    user_quotes.append(quote)
+            
+            # Sort by created_at desc and paginate
+            user_quotes.sort(key=lambda x: x.created_at, reverse=True)
+            paginated_quotes = user_quotes[skip:skip + limit]
+            
+            logger.debug(f"Fetched {len(paginated_quotes)} quotes for user {user_id}")
+            return paginated_quotes
+            
+        except Exception as e:
+            logger.error(f"Failed to get quotes for user {user_id}: {str(e)}")
+            raise StorageError("get_quotes", str(e))
+    
+    @staticmethod
+    async def get_quote_count(user_id: str) -> int:
+        """Get total count of quotes for a user"""
+        try:
+            quotes_db = await storage.load_data("quotes")
+            count = sum(1 for quote in quotes_db.values() if quote["user_id"] == user_id)
+            return count
+        except Exception as e:
+            logger.error(f"Failed to get quote count for user {user_id}: {str(e)}")
+            raise StorageError("get_quote_count", str(e))
+    
+    @staticmethod
+    async def update_quote(quote_id: str, quote_update: QuoteUpdate, user_id: str) -> Quote:
+        """Update a quote with validation and permission checking"""
+        try:
+            logger.info(f"Updating quote {quote_id} for user {user_id}")
+            
+            quotes_db = await storage.load_data("quotes")
+            quote_items_db = await storage.load_data("quote_items")
+            
+            quote_dict = quotes_db.get(quote_id)
+            if not quote_dict:
+                raise QuoteNotFoundError(quote_id)
+            
+            # Check permissions
+            if quote_dict["user_id"] != user_id:
+                raise QuotePermissionError(user_id, quote_id)
+            
+            # Update fields (excluding items which we handle separately)
+            update_data = quote_update.dict(exclude_unset=True, exclude={'items'})
+            for field, value in update_data.items():
+                if field == "valid_until" and value is not None:
+                    quote_dict[field] = value.isoformat()
+                elif field == "status" and hasattr(value, 'value'):
+                    quote_dict[field] = value.value
+                else:
+                    quote_dict[field] = value
+            
+            # Handle items update if provided
+            if quote_update.items is not None:
+                logger.debug(f"Updating {len(quote_update.items)} items for quote {quote_id}")
+                
+                # Delete existing items for this quote
+                items_to_delete = [
+                    item_id for item_id, item_dict in quote_items_db.items()
+                    if item_dict["quote_id"] == quote_id
+                ]
+                
+                for item_id in items_to_delete:
+                    del quote_items_db[item_id]
+                
+                # Create new items
+                total_amount = Decimal('0')
+                now = datetime.utcnow()
+                
+                for item_data in quote_update.items:
+                    item_id = str(uuid.uuid4())
+                    item_dict = {
+                        "id": item_id,
+                        "quote_id": quote_id,
+                        "name": item_data.name,
+                        "description": item_data.description,
+                        "quantity": item_data.quantity,
+                        "unit_price": str(item_data.unit_price),
+                        "created_at": now.isoformat(),
+                        "updated_at": now.isoformat()
+                    }
+                    quote_items_db[item_id] = item_dict
+                    total_amount += item_data.total_price
+                
+                # Update total amount
+                quote_dict["total_amount"] = str(total_amount)
+            
+            quote_dict["updated_at"] = datetime.utcnow().isoformat()
+            quotes_db[quote_id] = quote_dict
+            
+            # Save data atomically
+            await asyncio.gather(
+                storage.save_data("quotes", quotes_db),
+                storage.save_data("quote_items", quote_items_db)
+            )
+            
+            logger.info(f"Quote updated successfully: {quote_id}")
+            return await QuoteService.get_quote(quote_id, user_id)
+            
+        except (QuoteNotFoundError, QuotePermissionError):
+            raise
+        except Exception as e:
+            logger.error(f"Failed to update quote {quote_id}: {str(e)}")
+            raise StorageError("update_quote", str(e))
+    
+    @staticmethod
+    async def delete_quote(quote_id: str, user_id: str) -> bool:
+        """Delete a quote with permission checking"""
+        try:
+            logger.info(f"Deleting quote {quote_id} for user {user_id}")
+            
+            quotes_db = await storage.load_data("quotes")
+            quote_items_db = await storage.load_data("quote_items")
+            
+            quote_dict = quotes_db.get(quote_id)
+            if not quote_dict:
+                raise QuoteNotFoundError(quote_id)
+            
+            # Check permissions
+            if quote_dict["user_id"] != user_id:
+                raise QuotePermissionError(user_id, quote_id)
+            
+            # Delete quote items
+            items_to_delete = [
+                item_id for item_id, item_dict in quote_items_db.items()
+                if item_dict["quote_id"] == quote_id
+            ]
+            
+            for item_id in items_to_delete:
+                del quote_items_db[item_id]
+            
+            # Delete quote
+            del quotes_db[quote_id]
+            
+            # Save data atomically
+            await asyncio.gather(
+                storage.save_data("quotes", quotes_db),
+                storage.save_data("quote_items", quote_items_db)
+            )
+            
+            logger.info(f"Quote deleted successfully: {quote_id}")
+            return True
+            
+        except (QuoteNotFoundError, QuotePermissionError):
+            raise
+        except Exception as e:
+            logger.error(f"Failed to delete quote {quote_id}: {str(e)}")
+            raise StorageError("delete_quote", str(e))
+    
+    @staticmethod
+    async def add_sample_data(user_id: str) -> None:
+        """Add sample quotes for new users"""
+        try:
+            quotes_db = await storage.load_data("quotes")
+            
+            # Check if user already has quotes
+            user_has_quotes = any(
+                quote["user_id"] == user_id for quote in quotes_db.values()
+            )
+            
+            if user_has_quotes:
+                logger.debug(f"User {user_id} already has quotes, skipping sample data")
+                return
+            
+            logger.info(f"Adding sample data for user {user_id}")
+            
+            sample_quotes = [
+                QuoteCreate(
+                    customer_name="Acme Corp",
+                    customer_email="contact@acme.com",
+                    title="Enterprise Software License",
+                    description="Annual software license for enterprise solution",
+                    status="pending",
+                    items=[
+                        QuoteItemCreate(
+                            name="Enterprise License",
+                            description="Annual license for 100 users",
+                            quantity=1,
+                            unit_price=Decimal("12500.00")
+                        )
+                    ]
+                ),
+                QuoteCreate(
+                    customer_name="Tech Solutions",
+                    customer_email="info@techsolutions.com",
+                    title="Cloud Infrastructure Setup",
+                    description="Initial cloud infrastructure deployment",
+                    status="draft",
+                    items=[
+                        QuoteItemCreate(
+                            name="Server Setup",
+                            description="Initial server configuration",
+                            quantity=3,
+                            unit_price=Decimal("2500.00")
+                        ),
+                        QuoteItemCreate(
+                            name="Database Setup",
+                            description="Database configuration and optimization",
+                            quantity=1,
+                            unit_price=Decimal("2250.00")
+                        )
+                    ]
+                )
+            ]
+            
+            for quote_data in sample_quotes:
+                await QuoteService.create_quote(quote_data, user_id)
+            
+            logger.info(f"Sample data added for user {user_id}")
+            
+        except Exception as e:
+            logger.error(f"Failed to add sample data for user {user_id}: {str(e)}")
+            # Don't raise error for sample data failure
+            pass

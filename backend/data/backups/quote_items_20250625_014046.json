@@ -69,34 +69,14 @@
     "created_at": "2025-06-25T01:14:52.176730",
     "updated_at": "2025-06-25T01:14:52.176730"
   },
-  "ebb91dd7-3341-4ac9-90a6-1f0cf6dc743e": {
-    "id": "ebb91dd7-3341-4ac9-90a6-1f0cf6dc743e",
-    "quote_id": "a581b7a7-1ddd-4fe3-ad7d-5f50d488a301",
-    "name": "Enterprise License",
-    "description": "Annual license for 100 users",
+  "d85fba6e-9182-4548-ad8a-b6dd26d675d7": {
+    "id": "d85fba6e-9182-4548-ad8a-b6dd26d675d7",
+    "quote_id": "bc4c3e4f-5519-4be5-af04-23bc15a18717",
+    "name": "Understand",
+    "description": "my tim",
     "quantity": 1,
-    "unit_price": "12500.00",
-    "created_at": "2025-06-25T01:46:38.552574",
-    "updated_at": "2025-06-25T01:46:38.552574"
-  },
-  "398ee3fd-8f36-4303-bec3-17fcdffe5250": {
-    "id": "398ee3fd-8f36-4303-bec3-17fcdffe5250",
-    "quote_id": "bcea2658-220c-4d46-a105-20267b873335",
-    "name": "Server Setup",
-    "description": "Initial server configuration",
-    "quantity": 3,
-    "unit_price": "2500.00",
-    "created_at": "2025-06-25T01:46:38.562338",
-    "updated_at": "2025-06-25T01:46:38.562338"
-  },
-  "3401dd8f-356c-4b95-8cef-7808d95194f3": {
-    "id": "3401dd8f-356c-4b95-8cef-7808d95194f3",
-    "quote_id": "bcea2658-220c-4d46-a105-20267b873335",
-    "name": "Database Setup",
-    "description": "Database configuration and optimization",
-    "quantity": 1,
-    "unit_price": "2250.00",
-    "created_at": "2025-06-25T01:46:38.562338",
-    "updated_at": "2025-06-25T01:46:38.562338"
+    "unit_price": "100.00",
+    "created_at": "2025-06-25T01:40:39.148297",
+    "updated_at": "2025-06-25T01:40:39.148297"
   }
 }

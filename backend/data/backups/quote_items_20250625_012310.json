@@ -69,34 +69,24 @@
     "created_at": "2025-06-25T01:14:52.176730",
     "updated_at": "2025-06-25T01:14:52.176730"
   },
-  "ebb91dd7-3341-4ac9-90a6-1f0cf6dc743e": {
-    "id": "ebb91dd7-3341-4ac9-90a6-1f0cf6dc743e",
-    "quote_id": "a581b7a7-1ddd-4fe3-ad7d-5f50d488a301",
-    "name": "Enterprise License",
-    "description": "Annual license for 100 users",
-    "quantity": 1,
-    "unit_price": "12500.00",
-    "created_at": "2025-06-25T01:46:38.552574",
-    "updated_at": "2025-06-25T01:46:38.552574"
-  },
-  "398ee3fd-8f36-4303-bec3-17fcdffe5250": {
-    "id": "398ee3fd-8f36-4303-bec3-17fcdffe5250",
-    "quote_id": "bcea2658-220c-4d46-a105-20267b873335",
-    "name": "Server Setup",
+  "3caacaf7-a3ca-4781-8974-0a30da1ab649": {
+    "id": "3caacaf7-a3ca-4781-8974-0a30da1ab649",
+    "quote_id": "3244a9a4-477c-45df-a798-f08b64bc83e2",
+    "name": "Server Setu",
     "description": "Initial server configuration",
-    "quantity": 3,
+    "quantity": 1,
     "unit_price": "2500.00",
-    "created_at": "2025-06-25T01:46:38.562338",
-    "updated_at": "2025-06-25T01:46:38.562338"
+    "created_at": "2025-06-25T01:23:04.500971",
+    "updated_at": "2025-06-25T01:23:04.500971"
   },
-  "3401dd8f-356c-4b95-8cef-7808d95194f3": {
-    "id": "3401dd8f-356c-4b95-8cef-7808d95194f3",
-    "quote_id": "bcea2658-220c-4d46-a105-20267b873335",
+  "696a0af5-801a-41f7-b8de-088fe08ff878": {
+    "id": "696a0af5-801a-41f7-b8de-088fe08ff878",
+    "quote_id": "3244a9a4-477c-45df-a798-f08b64bc83e2",
     "name": "Database Setup",
     "description": "Database configuration and optimization",
     "quantity": 1,
     "unit_price": "2250.00",
-    "created_at": "2025-06-25T01:46:38.562338",
-    "updated_at": "2025-06-25T01:46:38.562338"
+    "created_at": "2025-06-25T01:23:04.500971",
+    "updated_at": "2025-06-25T01:23:04.500971"
   }
 }

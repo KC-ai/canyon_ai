@@ -24,7 +24,7 @@ export function QuoteForm() {
   })
 
   const [items, setItems] = useState<QuoteItemCreate[]>([
-    { name: '', description: '', quantity: 1, unit_price: 0 }
+    { name: '', description: '', quantity: 1, unit_price: 1 }
   ])
 
   const handleInputChange = (field: string, value: string) => {
@@ -38,7 +38,7 @@ export function QuoteForm() {
   }
 
   const addItem = () => {
-    setItems(prev => [...prev, { name: '', description: '', quantity: 1, unit_price: 0 }])
+    setItems(prev => [...prev, { name: '', description: '', quantity: 1, unit_price: 1 }])
   }
 
   const removeItem = (index: number) => {
@@ -57,9 +57,32 @@ export function QuoteForm() {
     setError('')
 
     try {
+      // Filter and validate items
+      const validItems = items.filter(item => 
+        item.name.trim() !== '' && 
+        item.quantity > 0 && 
+        item.unit_price > 0
+      )
+      
+      // Client-side validation
+      if (!formData.customer_name.trim()) {
+        setError('Customer name is required')
+        return
+      }
+      
+      if (!formData.title.trim()) {
+        setError('Quote title is required')
+        return
+      }
+      
+      if (validItems.length === 0) {
+        setError('At least one valid item is required')
+        return
+      }
+
       const quoteData = {
         ...formData,
-        items: items.filter(item => item.name.trim() !== '')
+        items: validItems
       }
 
       const newQuote = await createQuote(quoteData)

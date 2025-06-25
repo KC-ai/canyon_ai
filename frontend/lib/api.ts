@@ -83,6 +83,7 @@ class ApiClient {
 
     try {
       const headers = await this.getAuthHeaders()
+        
       const response = await fetch(`${this.baseURL}${endpoint}`, {
         ...options,
         headers: { ...headers, ...options.headers },

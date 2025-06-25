@@ -149,18 +149,8 @@ export function useRealtimeQuotes() {
   }, [optimisticUpdate])
 
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      if (loading) {
-        console.warn('Loading timeout reached')
-        setError('Loading timeout - please refresh')
-        setLoading(false)
-      }
-    }, 10000) // 10 second timeout
-
     loadQuotes()
-
-    return () => clearTimeout(timeoutId)
-  }, [loadQuotes, loading])
+  }, [loadQuotes])
 
   // Set up real-time subscription
   useEffect(() => {
