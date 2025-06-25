@@ -7,6 +7,10 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from app.api import quotes
 from app.core.errors import setup_error_handlers
 from app.core.logging_config import setup_logging, RequestLoggingMiddleware
@@ -119,10 +123,11 @@ async def get_dev_quotes():
         quotes = await QuoteService.get_quotes(user_id, 0, 10)
         total_count = await QuoteService.get_quote_count(user_id)
         
-        if total_count == 0:
-            await QuoteService.add_sample_data(user_id)
-            quotes = await QuoteService.get_quotes(user_id, 0, 10)
-            total_count = await QuoteService.get_quote_count(user_id)
+        # Disable automatic sample data creation to prevent quote recreation
+        # if total_count == 0:
+        #     await QuoteService.add_sample_data(user_id)
+        #     quotes = await QuoteService.get_quotes(user_id, 0, 10)
+        #     total_count = await QuoteService.get_quote_count(user_id)
         
         return QuoteListResponse(
             quotes=quotes,
@@ -134,6 +139,184 @@ async def get_dev_quotes():
         )
     except Exception as e:
         logger.error(f"Dev endpoint error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Development quote endpoints
+@app.get("/api/dev/quotes/{quote_id}")
+async def get_dev_quote(quote_id: str):
+    """Development-only endpoint to get a specific quote without auth"""
+    if os.getenv("ENVIRONMENT") != "development":
+        raise HTTPException(status_code=403, detail="Not available")
+    
+    from app.core.storage import storage
+    
+    try:
+        # Get quote directly from storage without user filtering for dev
+        quotes_data = await storage.load_data("quotes")
+        if quote_id not in quotes_data:
+            raise HTTPException(status_code=404, detail="Quote not found")
+        
+        quote_data = quotes_data[quote_id]
+        
+        # Also load quote items
+        items_data = await storage.load_data("quote_items")
+        items = [item for item in items_data.values() if item["quote_id"] == quote_id]
+        quote_data["items"] = items
+        
+        return quote_data
+    except Exception as e:
+        logger.error(f"Dev quote endpoint error: {e}")
+        raise HTTPException(status_code=404, detail="Quote not found")
+
+@app.put("/api/dev/quotes/{quote_id}")
+async def update_dev_quote(quote_id: str, quote_update: dict):
+    """Development-only endpoint to update a quote without auth"""
+    if os.getenv("ENVIRONMENT") != "development":
+        raise HTTPException(status_code=403, detail="Not available")
+    
+    from app.core.storage import storage
+    from datetime import datetime
+    
+    try:
+        # Get current quote from storage
+        quotes_data = await storage.load_data("quotes")
+        if quote_id not in quotes_data:
+            raise HTTPException(status_code=404, detail="Quote not found")
+        
+        # Update the quote data
+        quote_data = quotes_data[quote_id]
+        for key, value in quote_update.items():
+            if key in quote_data:
+                quote_data[key] = value
+        
+        # Update timestamp
+        quote_data["updated_at"] = datetime.now().isoformat()
+        
+        # Save back to storage
+        quotes_data[quote_id] = quote_data
+        await storage.save_data("quotes", quotes_data)
+        
+        # Return updated quote with items
+        items_data = await storage.load_data("quote_items")
+        items = [item for item in items_data.values() if item["quote_id"] == quote_id]
+        quote_data["items"] = items
+        
+        return quote_data
+    except Exception as e:
+        logger.error(f"Dev quote update error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/dev/quotes")
+async def create_dev_quote(quote_create: dict):
+    """Development-only endpoint to create a quote without auth"""
+    if os.getenv("ENVIRONMENT") != "development":
+        raise HTTPException(status_code=403, detail="Not available")
+    
+    from app.services.quote_service import QuoteService
+    from app.models.quotes import QuoteCreate
+    
+    user_id = "dev-user-123"
+    try:
+        # Convert dict to QuoteCreate model
+        create_data = QuoteCreate(**quote_create)
+        quote = await QuoteService.create_quote(create_data, user_id)
+        return quote
+    except Exception as e:
+        logger.error(f"Dev quote create error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/dev/quotes/{quote_id}")
+async def delete_dev_quote(quote_id: str):
+    """Development-only endpoint to delete a quote without auth"""
+    if os.getenv("ENVIRONMENT") != "development":
+        raise HTTPException(status_code=403, detail="Not available")
+    
+    from app.core.storage import storage
+    
+    try:
+        # Delete from storage
+        quotes_data = await storage.load_data("quotes")
+        if quote_id not in quotes_data:
+            raise HTTPException(status_code=404, detail="Quote not found")
+        
+        del quotes_data[quote_id]
+        await storage.save_data("quotes", quotes_data)
+        
+        # Also delete quote items
+        items_data = await storage.load_data("quote_items")
+        items_to_delete = [item_id for item_id, item in items_data.items() if item["quote_id"] == quote_id]
+        for item_id in items_to_delete:
+            del items_data[item_id]
+        await storage.save_data("quote_items", items_data)
+        
+        return {"message": "Quote deleted successfully"}
+    except Exception as e:
+        logger.error(f"Dev quote delete error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/api/dev/workflows/{workflow_id}")
+async def update_dev_workflow(workflow_id: str, workflow_update: dict):
+    """Development-only endpoint to update a workflow without auth"""
+    if os.getenv("ENVIRONMENT") != "development":
+        raise HTTPException(status_code=403, detail="Not available")
+    
+    from app.core.storage import storage
+    from datetime import datetime
+    
+    try:
+        # Return a mock successful workflow update
+        return {
+            "id": workflow_id,
+            "quote_id": "unknown",
+            "user_id": "dev-user",
+            "name": "Updated Workflow",
+            "description": "Workflow updated successfully in dev mode",
+            "status": "draft",
+            "steps": workflow_update.get("steps", []),
+            "is_active": True,
+            "auto_start": False,
+            "allow_parallel_steps": False,
+            "require_all_approvals": True,
+            "created_at": datetime.now().isoformat(),
+            "updated_at": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Dev workflow update error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/dev/workflows")
+async def create_dev_workflow(workflow_create: dict):
+    """Development-only endpoint to create a workflow without auth"""
+    if os.getenv("ENVIRONMENT") != "development":
+        raise HTTPException(status_code=403, detail="Not available")
+    
+    from datetime import datetime
+    import uuid
+    
+    try:
+        # For now, just return success without actually creating
+        workflow_id = str(uuid.uuid4())
+        return {
+            "id": workflow_id,
+            "message": "Workflow created successfully (dev mode)",
+            "created_at": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Dev workflow create error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Development workflow endpoint
+@app.get("/api/dev/workflows")
+async def get_dev_workflows():
+    """Development-only endpoint to test workflow loading without auth"""
+    if os.getenv("ENVIRONMENT") != "development":
+        raise HTTPException(status_code=403, detail="Not available")
+    
+    try:
+        # For now, return empty list as workflows API is not fully implemented
+        return []
+    except Exception as e:
+        logger.error(f"Dev workflow endpoint error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # Include API routers

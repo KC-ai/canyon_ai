@@ -161,22 +161,6 @@ const SortableStepBuilder: React.FC<{
           />
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Auto-Approve Threshold ($)
-          </label>
-          <input
-            type="text"
-            value={step.auto_approve_threshold}
-            onChange={(e) => handleChange('auto_approve_threshold', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="e.g., 10000"
-            disabled={isOptimisticUpdate}
-          />
-          <p className="text-xs text-gray-500 mt-1">
-            Leave empty for manual approval
-          </p>
-        </div>
       </div>
 
       <div>
@@ -430,10 +414,18 @@ const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     setWorkflowState(prev => ({ ...prev, isDragging: true }))
   }, [])
 
-  const handleDragEnd = useCallback((result: DragDropResult) => {
+  const handleDragEnd = useCallback(async (result: DragDropResult) => {
+    console.log('=== DRAG END TRIGGERED ===')
+    console.log('Result:', result)
+    console.log('onSave function:', onSave)
+    console.log('initialWorkflow ID:', initialWorkflow?.id)
+    
     setWorkflowState(prev => ({ ...prev, isDragging: false }))
     
-    if (!result.items || result.fromIndex === result.toIndex) return
+    if (!result.items || result.fromIndex === result.toIndex) {
+      console.log('No change in drag order, returning')
+      return
+    }
     
     // Convert DragDropWorkflowStep back to WorkflowStepFormData
     const newSteps: WorkflowStepFormData[] = result.items.map((item, index) => ({
@@ -448,18 +440,69 @@ const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       max_processing_days: item.max_processing_days
     }))
     
+    console.log('New steps after drag:', newSteps)
+    
     // Start optimistic update for drag operation
     setWorkflowState(prev => ({ ...prev, isUpdating: true }))
     
     const updatedFormData = { ...formData, steps: newSteps }
     startOptimisticUpdate(updatedFormData)
     
-    // Simulate API call delay and success
-    setTimeout(() => {
+    try {
+      // Call onSave to persist the reordering (either to API for existing workflows or to parent state for new workflows)
+      if (onSave && !workflowState.isUpdating) {
+        console.log('=== CALLING SAVE FUNCTION FOR DRAG CHANGES ===')
+        
+        // Clear any pending auto-save to prevent conflicts
+        if (autoSaveTimeout.current) {
+          clearTimeout(autoSaveTimeout.current)
+        }
+        
+        // Convert form data to API format
+        const trigger_amount = updatedFormData.trigger_amount && parseFloat(updatedFormData.trigger_amount) || undefined
+        const trigger_discount_percent = updatedFormData.trigger_discount_percent && parseFloat(updatedFormData.trigger_discount_percent) || undefined
+        
+        const updateData: ApprovalWorkflowCreate = {
+          name: updatedFormData.name || initialWorkflow?.name || 'Untitled Workflow',
+          description: updatedFormData.description || initialWorkflow?.description || '',
+          trigger_amount,
+          trigger_discount_percent,
+          auto_start: true,
+          allow_parallel_steps: false,
+          require_all_approvals: true,
+          is_active: true,
+          steps: updatedFormData.steps
+            .filter(step => step.persona && Object.values(PersonaType).includes(step.persona as PersonaType))
+            .map((step, index) => ({
+              name: step.name,
+              description: step.description,
+              persona: step.persona as PersonaType,
+              order: index + 1,
+              is_required: step.is_required,
+              auto_approve_threshold: undefined,
+              escalation_threshold: undefined,
+              max_processing_days: step.max_processing_days
+            }))
+        }
+        
+        console.log('Update data being sent:', updateData)
+        console.log('Name field value:', updateData.name)
+        console.log('Steps count:', updateData.steps.length)
+        await onSave(updateData)
+        console.log('=== SAVE FUNCTION CALL SUCCESSFUL ===')
+      } else {
+        console.log('Skipping save - no onSave function provided')
+      }
+      
       setWorkflowState(prev => ({ ...prev, isUpdating: false }))
       handleSuccess('Workflow steps reordered successfully')
-    }, 500)
-  }, [formData, startOptimisticUpdate, handleSuccess])
+      confirmOptimisticUpdate()
+    } catch (error) {
+      console.error('=== DRAG & DROP SAVE ERROR ===', error)
+      handleRollback()
+      setWorkflowState(prev => ({ ...prev, error: 'Failed to save step reordering' }))
+    }
+  }, [formData, startOptimisticUpdate, handleSuccess, initialWorkflow?.id, onSave, handleRollback])
 
   // Confirmation dialog helpers
   const showConfirmation = useCallback((title: string, message: string, action: () => void) => {
@@ -496,9 +539,9 @@ const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
         steps: [
           {
             id: `step-1-${Date.now()}`,
-            name: 'Sales Manager Approval',
-            description: 'Initial approval from sales management',
-            persona: PersonaType.SALES_MANAGER,
+            name: 'AE Review',
+            description: 'Account Executive review and validation',
+            persona: PersonaType.AE,
             order: 1,
             is_required: true,
             auto_approve_threshold: '5000',
@@ -518,14 +561,25 @@ const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
           },
           {
             id: `step-3-${Date.now()}`,
-            name: 'Finance Approval',
-            description: 'Final financial review and approval',
-            persona: PersonaType.FINANCE,
+            name: 'Legal Review',
+            description: 'Legal team contract and compliance review',
+            persona: PersonaType.LEGAL,
             order: 3,
             is_required: true,
             auto_approve_threshold: '',
             escalation_threshold: '',
-            max_processing_days: 5
+            max_processing_days: 7
+          },
+          {
+            id: `step-4-${Date.now()}`,
+            name: 'Customer Delivery',
+            description: 'Final approved quote delivered to customer',
+            persona: PersonaType.CUSTOMER,
+            order: 4,
+            is_required: true,
+            auto_approve_threshold: '',
+            escalation_threshold: '',
+            max_processing_days: 1
           }
         ]
       },
@@ -540,9 +594,9 @@ const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
         steps: [
           {
             id: `step-1-${Date.now()}`,
-            name: 'VP Sales Approval',
-            description: 'Strategic review by VP of Sales',
-            persona: PersonaType.VP_SALES,
+            name: 'AE Review',
+            description: 'Account Executive review and validation',
+            persona: PersonaType.AE,
             order: 1,
             is_required: true,
             auto_approve_threshold: '',
@@ -551,14 +605,14 @@ const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
           },
           {
             id: `step-2-${Date.now()}`,
-            name: 'Legal Review',
-            description: 'Contract terms and legal compliance review',
-            persona: PersonaType.LEGAL,
+            name: 'Deal Desk Review',
+            description: 'Deal desk comprehensive review',
+            persona: PersonaType.DEAL_DESK,
             order: 2,
             is_required: true,
             auto_approve_threshold: '',
             escalation_threshold: '',
-            max_processing_days: 5
+            max_processing_days: 3
           },
           {
             id: `step-3-${Date.now()}`,
@@ -577,6 +631,28 @@ const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
             description: 'Final financial review and approval',
             persona: PersonaType.FINANCE,
             order: 4,
+            is_required: true,
+            auto_approve_threshold: '',
+            escalation_threshold: '',
+            max_processing_days: 3
+          },
+          {
+            id: `step-5-${Date.now()}`,
+            name: 'Legal Review',
+            description: 'Contract terms and legal compliance review',
+            persona: PersonaType.LEGAL,
+            order: 5,
+            is_required: true,
+            auto_approve_threshold: '',
+            escalation_threshold: '',
+            max_processing_days: 5
+          },
+          {
+            id: `step-6-${Date.now()}`,
+            name: 'Customer Delivery',
+            description: 'Final approved quote delivered to customer',
+            persona: PersonaType.CUSTOMER,
+            order: 6,
             is_required: true,
             auto_approve_threshold: '',
             escalation_threshold: '',
@@ -606,33 +682,33 @@ const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
           },
           {
             id: `step-2-${Date.now()}`,
-            name: 'Sales Manager Approval',
-            description: 'Review and approval from Sales Manager',
-            persona: PersonaType.SALES_MANAGER,
+            name: 'Deal Desk Review',
+            description: 'Commercial terms and pricing review',
+            persona: PersonaType.DEAL_DESK,
             order: 2,
-            is_required: true,
-            auto_approve_threshold: '',
-            escalation_threshold: '',
-            max_processing_days: 2
-          },
-          {
-            id: `step-3-${Date.now()}`,
-            name: 'VP Sales Approval',
-            description: 'Strategic review by VP of Sales',
-            persona: PersonaType.VP_SALES,
-            order: 3,
             is_required: true,
             auto_approve_threshold: '',
             escalation_threshold: '',
             max_processing_days: 3
           },
           {
+            id: `step-3-${Date.now()}`,
+            name: 'CRO Approval',
+            description: 'Executive approval from Chief Revenue Officer',
+            persona: PersonaType.CRO,
+            order: 3,
+            is_required: false,
+            auto_approve_threshold: '',
+            escalation_threshold: '',
+            max_processing_days: 2
+          },
+          {
             id: `step-4-${Date.now()}`,
-            name: 'Deal Desk Review',
-            description: 'Commercial terms and pricing review',
-            persona: PersonaType.DEAL_DESK,
+            name: 'Finance Approval',
+            description: 'Financial review and approval',
+            persona: PersonaType.FINANCE,
             order: 4,
-            is_required: true,
+            is_required: false,
             auto_approve_threshold: '',
             escalation_threshold: '',
             max_processing_days: 3
@@ -643,32 +719,21 @@ const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
             description: 'Contract terms and legal compliance review',
             persona: PersonaType.LEGAL,
             order: 5,
-            is_required: false,
+            is_required: true,
             auto_approve_threshold: '',
             escalation_threshold: '',
             max_processing_days: 5
           },
           {
             id: `step-6-${Date.now()}`,
-            name: 'Finance Approval',
-            description: 'Financial review and approval',
-            persona: PersonaType.FINANCE,
+            name: 'Customer Delivery',
+            description: 'Final approved quote delivered to customer',
+            persona: PersonaType.CUSTOMER,
             order: 6,
             is_required: true,
             auto_approve_threshold: '',
             escalation_threshold: '',
-            max_processing_days: 3
-          },
-          {
-            id: `step-7-${Date.now()}`,
-            name: 'CRO Final Approval',
-            description: 'Executive approval from Chief Revenue Officer',
-            persona: PersonaType.CRO,
-            order: 7,
-            is_required: false,
-            auto_approve_threshold: '',
-            escalation_threshold: '',
-            max_processing_days: 2
+            max_processing_days: 1
           }
         ]
       },
@@ -712,23 +777,53 @@ const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     
     // Set new timeout for auto-save
     autoSaveTimeout.current = setTimeout(async () => {
-      if (!hasUnsavedChanges) return
+      if (!hasUnsavedChanges || !initialWorkflow?.id || workflowState.isUpdating) return
       
       try {
         const validationErrors = validateWorkflowForm(newFormData)
         if (Object.keys(validationErrors).length === 0) {
           startOptimisticUpdate(newFormData)
           
-          // Simulate API call (replace with actual API)
-          await new Promise(resolve => setTimeout(resolve, 1000))
+          // Convert form data to API format
+          const trigger_amount = parseFloat(newFormData.trigger_amount) || 0
+          const trigger_discount_percent = parseFloat(newFormData.trigger_discount_percent) || 0
+          
+          const updateData: ApprovalWorkflowCreate = {
+            name: newFormData.name,
+            description: newFormData.description,
+            trigger_amount,
+            trigger_discount_percent,
+            auto_start: true,
+            allow_parallel_steps: false,
+            require_all_approvals: true,
+            is_active: true,
+            steps: newFormData.steps
+              .filter(step => step.persona && Object.values(PersonaType).includes(step.persona as PersonaType))
+              .map((step, index) => ({
+                name: step.name,
+                description: step.description,
+                persona: step.persona as PersonaType,
+                order: index + 1,
+                is_required: step.is_required,
+                auto_approve_threshold: undefined,
+                escalation_threshold: undefined,
+                max_processing_days: step.max_processing_days
+              }))
+          }
+          
+          // Actually call the API
+          if (onSave) {
+            await onSave(updateData)
+          }
           
           confirmOptimisticUpdate()
         }
       } catch (error) {
+        console.error('Auto-save error:', error)
         handleRollback()
       }
     }, 2000) // 2 second debounce
-  }, [hasUnsavedChanges, startOptimisticUpdate, confirmOptimisticUpdate, handleRollback])
+  }, [hasUnsavedChanges, initialWorkflow?.id, startOptimisticUpdate, handleRollback, onSave])
 
   // Handle form field changes
   const handleChange = (field: keyof WorkflowFormData, value: any) => {
@@ -767,30 +862,81 @@ const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
 
   // Handle step removal with confirmation
   const handleStepRemove = (index: number) => {
+    console.log('=== STEP REMOVE TRIGGERED ===')
+    console.log('Index:', index)
+    console.log('Current steps:', formData.steps)
+    
     const stepToRemove = formData.steps[index]
+    console.log('Step to remove:', stepToRemove)
     
     const performRemoval = () => {
-      // Push to undo stack before removal
-      pushToUndoStack(formData)
-      
-      const newSteps = formData.steps.filter((_, i) => i !== index)
-      // Reorder the remaining steps
-      const reorderedSteps = newSteps.map((step, i) => ({ ...step, order: i + 1 }))
-      const newFormData = { ...formData, steps: reorderedSteps }
-      setFormData(newFormData)
-      
-      // Trigger auto-save for step removal
-      triggerAutoSave(newFormData)
-      handleSuccess(`Step "${stepToRemove.name}" removed successfully`)
+      console.log('=== PERFORMING REMOVAL ===')
+      try {
+        // Push to undo stack before removal
+        pushToUndoStack(formData)
+        
+        const newSteps = formData.steps.filter((_, i) => i !== index)
+        console.log('New steps after filter:', newSteps)
+        
+        // Reorder the remaining steps
+        const reorderedSteps = newSteps.map((step, i) => ({ ...step, order: i + 1 }))
+        console.log('Reordered steps:', reorderedSteps)
+        
+        const newFormData = { ...formData, steps: reorderedSteps }
+        console.log('New form data:', newFormData)
+        
+        setFormData(newFormData)
+        
+        // Call onSave to notify parent of changes (for both edit and create modes)
+        if (onSave) {
+          try {
+            const trigger_amount = newFormData.trigger_amount && parseFloat(newFormData.trigger_amount) || undefined
+            const trigger_discount_percent = newFormData.trigger_discount_percent && parseFloat(newFormData.trigger_discount_percent) || undefined
+            
+            const updateData: ApprovalWorkflowCreate = {
+              name: newFormData.name || initialWorkflow?.name || 'Untitled Workflow',
+              description: newFormData.description || initialWorkflow?.description || '',
+              trigger_amount,
+              trigger_discount_percent,
+              auto_start: true,
+              allow_parallel_steps: false,
+              require_all_approvals: true,
+              steps: reorderedSteps.filter(step => step.persona && step.persona !== '').map(step => ({
+                name: step.name,
+                description: step.description,
+                persona: step.persona as PersonaType,
+                order: step.order,
+                is_required: step.is_required,
+                auto_approve_threshold: undefined,
+                escalation_threshold: undefined,
+                max_processing_days: step.max_processing_days
+              }))
+            }
+            
+            console.log('Calling onSave after step removal:', updateData)
+            onSave(updateData)
+          } catch (error) {
+            console.error('Error calling onSave after removal:', error)
+          }
+        }
+        
+        handleSuccess(`Step "${stepToRemove.name}" removed successfully`)
+        console.log('=== REMOVAL SUCCESSFUL ===')
+      } catch (err) {
+        console.error('=== ERROR IN REMOVAL ===', err)
+        setWorkflowState(prev => ({ ...prev, error: 'Failed to remove step' }))
+      }
     }
     
-    if (stepToRemove.name) {
+    if (stepToRemove?.name) {
+      console.log('Showing confirmation dialog')
       showConfirmation(
         'Remove Step',
         `Are you sure you want to remove "${stepToRemove.name}"? This action cannot be undone.`,
         performRemoval
       )
     } else {
+      console.log('No step name, performing removal directly')
       performRemoval()
     }
   }
@@ -846,17 +992,17 @@ const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
         is_active: true,
         trigger_amount: formData.trigger_amount ? parseFloat(formData.trigger_amount) : undefined,
         trigger_discount_percent: formData.trigger_discount_percent ? parseFloat(formData.trigger_discount_percent) : undefined,
-        auto_start: formData.auto_start,
-        allow_parallel_steps: formData.allow_parallel_steps,
-        require_all_approvals: formData.require_all_approvals,
+        auto_start: true,
+        allow_parallel_steps: false,
+        require_all_approvals: true,
         steps: formData.steps.map(step => ({
           name: step.name,
           description: step.description || undefined,
           persona: step.persona as PersonaType,
           order: step.order,
           is_required: step.is_required,
-          auto_approve_threshold: step.auto_approve_threshold ? parseFloat(step.auto_approve_threshold) : undefined,
-          escalation_threshold: step.escalation_threshold ? parseFloat(step.escalation_threshold) : undefined,
+          auto_approve_threshold: undefined,
+          escalation_threshold: undefined,
           max_processing_days: step.max_processing_days
         }))
       }
@@ -1088,37 +1234,6 @@ const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
             />
           </div>
 
-          <div className="flex flex-wrap gap-4">
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                checked={formData.auto_start}
-                onChange={(e) => handleChange('auto_start', e.target.checked)}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              <span className="ml-2 text-sm text-gray-700">Auto-start workflow</span>
-            </label>
-
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                checked={formData.allow_parallel_steps}
-                onChange={(e) => handleChange('allow_parallel_steps', e.target.checked)}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              <span className="ml-2 text-sm text-gray-700">Allow parallel steps</span>
-            </label>
-
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                checked={formData.require_all_approvals}
-                onChange={(e) => handleChange('require_all_approvals', e.target.checked)}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              <span className="ml-2 text-sm text-gray-700">Require all approvals</span>
-            </label>
-          </div>
         </div>
 
         {/* Workflow Steps */}

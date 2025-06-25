@@ -19,6 +19,8 @@ class QuoteItemBase(BaseModel):
     description: Optional[str] = Field(None, max_length=1000, description="Item description")
     quantity: int = Field(..., gt=0, le=10000, description="Quantity")
     unit_price: Decimal = Field(..., gt=0, le=Decimal("1000000"), description="Price per unit")
+    discount_percent: Decimal = Field(0, ge=0, le=100, description="Discount percentage")
+    discount_amount: Optional[Decimal] = Field(None, ge=0, description="Fixed discount amount")
     
     @field_validator('name')
     @classmethod
@@ -42,9 +44,43 @@ class QuoteItemBase(BaseModel):
         # Round to 2 decimal places
         return round(v, 2)
     
+    @field_validator('discount_percent')
+    @classmethod
+    def validate_discount_percent(cls, v):
+        if v < 0 or v > 100:
+            raise ValueError('Discount percentage must be between 0 and 100')
+        return round(v, 2)
+    
+    @field_validator('discount_amount')
+    @classmethod
+    def validate_discount_amount(cls, v):
+        if v is not None and v < 0:
+            raise ValueError('Discount amount cannot be negative')
+        return round(v, 2) if v is not None else v
+    
+    @property
+    def subtotal_price(self) -> Decimal:
+        """Subtotal before discount"""
+        return Decimal(str(self.quantity)) * self.unit_price
+    
+    @property
+    def discount_value(self) -> Decimal:
+        """Calculate actual discount amount"""
+        subtotal = self.subtotal_price
+        
+        # Use fixed discount amount if provided, otherwise use percentage
+        if self.discount_amount is not None and self.discount_amount > 0:
+            # Don't allow discount to exceed subtotal
+            return min(self.discount_amount, subtotal)
+        else:
+            # Calculate percentage discount
+            discount = subtotal * (self.discount_percent / Decimal('100'))
+            return min(discount, subtotal)
+    
     @property
     def total_price(self) -> Decimal:
-        return Decimal(str(self.quantity)) * self.unit_price
+        """Final price after discount"""
+        return self.subtotal_price - self.discount_value
 
 
 class QuoteItemCreate(QuoteItemBase):
@@ -56,6 +92,8 @@ class QuoteItemUpdate(BaseModel):
     description: Optional[str] = Field(None, max_length=1000)
     quantity: Optional[int] = Field(None, gt=0, le=10000)
     unit_price: Optional[Decimal] = Field(None, gt=0, le=Decimal("1000000"))
+    discount_percent: Optional[Decimal] = Field(None, ge=0, le=100)
+    discount_amount: Optional[Decimal] = Field(None, ge=0)
     
     @field_validator('name')
     @classmethod
@@ -77,6 +115,24 @@ class QuoteItemUpdate(BaseModel):
         if v is not None:
             if v <= 0:
                 raise ValueError('Unit price must be greater than 0')
+            return round(v, 2)
+        return v
+    
+    @field_validator('discount_percent')
+    @classmethod
+    def validate_discount_percent(cls, v):
+        if v is not None:
+            if v < 0 or v > 100:
+                raise ValueError('Discount percentage must be between 0 and 100')
+            return round(v, 2)
+        return v
+    
+    @field_validator('discount_amount')
+    @classmethod
+    def validate_discount_amount(cls, v):
+        if v is not None:
+            if v < 0:
+                raise ValueError('Discount amount cannot be negative')
             return round(v, 2)
         return v
 
@@ -261,6 +317,32 @@ class Quote(QuoteBase):
     @property
     def item_count(self) -> int:
         return len(self.items)
+    
+    @property
+    def max_discount_percent(self) -> Decimal:
+        """Get the maximum discount percentage across all items"""
+        if not self.items:
+            return Decimal('0')
+        return max(item.discount_percent for item in self.items)
+    
+    @property
+    def total_discount_amount(self) -> Decimal:
+        """Get total discount amount across all items"""
+        return sum(item.discount_value for item in self.items)
+    
+    @property
+    def subtotal_amount(self) -> Decimal:
+        """Get subtotal before discounts"""
+        return sum(item.subtotal_price for item in self.items)
+    
+    @property
+    def overall_discount_percent(self) -> Decimal:
+        """Calculate overall discount percentage"""
+        subtotal = self.subtotal_amount
+        if subtotal == 0:
+            return Decimal('0')
+        total_discount = self.total_discount_amount
+        return (total_discount / subtotal) * Decimal('100')
     
     class Config:
         from_attributes = True

@@ -27,11 +27,11 @@ async def get_quotes(
         quotes = await QuoteService.get_quotes(user_id, skip, limit)
         total_count = await QuoteService.get_quote_count(user_id)
         
-        # Add sample data if no quotes exist
-        if total_count == 0:
-            await QuoteService.add_sample_data(user_id)
-            quotes = await QuoteService.get_quotes(user_id, skip, limit)
-            total_count = await QuoteService.get_quote_count(user_id)
+        # Disable automatic sample data creation to prevent quote recreation
+        # if total_count == 0:
+        #     await QuoteService.add_sample_data(user_id)
+        #     quotes = await QuoteService.get_quotes(user_id, skip, limit)
+        #     total_count = await QuoteService.get_quote_count(user_id)
         
         page = (skip // limit) + 1
         
@@ -176,11 +176,11 @@ async def get_quotes_dev(
         quotes = await QuoteService.get_quotes(user_id, skip, limit)
         total_count = await QuoteService.get_quote_count(user_id)
         
-        # Add sample data if no quotes exist
-        if total_count == 0:
-            await QuoteService.add_sample_data(user_id)
-            quotes = await QuoteService.get_quotes(user_id, skip, limit)
-            total_count = await QuoteService.get_quote_count(user_id)
+        # Disable automatic sample data creation to prevent quote recreation
+        # if total_count == 0:
+        #     await QuoteService.add_sample_data(user_id)
+        #     quotes = await QuoteService.get_quotes(user_id, skip, limit)
+        #     total_count = await QuoteService.get_quote_count(user_id)
         
         page = (skip // limit) + 1
         

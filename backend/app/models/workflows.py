@@ -13,8 +13,7 @@ class PersonaType(str, Enum):
     CRO = "cro"  # Chief Revenue Officer
     LEGAL = "legal"  # Legal Team
     FINANCE = "finance"  # Finance Team
-    SALES_MANAGER = "sales_manager"  # Sales Manager
-    VP_SALES = "vp_sales"  # VP of Sales
+    CUSTOMER = "customer"  # Customer (final recipient)
 
 
 class WorkflowStepStatus(str, Enum):
@@ -427,24 +426,16 @@ STANDARD_DEAL_WORKFLOW = WorkflowTemplate(
             auto_approve_threshold=Decimal("25000")
         ),
         WorkflowStepCreate(
-            name="Sales Manager Approval",
-            description="Sales Manager approval for deals over $25K",
-            persona=PersonaType.SALES_MANAGER,
-            order=3,
-            auto_approve_threshold=Decimal("50000")
+            name="Legal Review",
+            description="Legal team contract and compliance review",
+            persona=PersonaType.LEGAL,
+            order=3
         ),
         WorkflowStepCreate(
-            name="VP Sales Approval",
-            description="VP Sales approval for deals over $50K", 
-            persona=PersonaType.VP_SALES,
-            order=4,
-            auto_approve_threshold=Decimal("100000")
-        ),
-        WorkflowStepCreate(
-            name="CRO Approval",
-            description="CRO approval for deals over $100K",
-            persona=PersonaType.CRO,
-            order=5
+            name="Customer Delivery",
+            description="Final approved quote delivered to customer",
+            persona=PersonaType.CUSTOMER,
+            order=4
         )
     ]
 )
@@ -485,6 +476,12 @@ ENTERPRISE_DEAL_WORKFLOW = WorkflowTemplate(
             description="CRO final approval for enterprise deals",
             persona=PersonaType.CRO,
             order=5
+        ),
+        WorkflowStepCreate(
+            name="Customer Delivery",
+            description="Final approved quote delivered to customer",
+            persona=PersonaType.CUSTOMER,
+            order=6
         )
     ]
 )

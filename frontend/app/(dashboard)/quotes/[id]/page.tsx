@@ -111,7 +111,7 @@ export default function QuoteDetailPage() {
             </div>
             <div>
               <label className="text-sm font-medium text-gray-500">Total Amount</label>
-              <p className="text-2xl font-bold text-gray-900">${quote.total_amount.toFixed(2)}</p>
+              <p className="text-2xl font-bold text-gray-900">${typeof quote.total_amount === 'string' ? parseFloat(quote.total_amount).toFixed(2) : quote.total_amount.toFixed(2)}</p>
             </div>
             <div>
               <label className="text-sm font-medium text-gray-500">Status</label>
@@ -144,11 +144,11 @@ export default function QuoteDetailPage() {
                         <p className="text-sm text-gray-600">{item.description}</p>
                       )}
                       <p className="text-sm text-gray-500">
-                        Qty: {item.quantity} × ${item.unit_price.toFixed(2)}
+                        Qty: {item.quantity} × ${typeof item.unit_price === 'string' ? parseFloat(item.unit_price).toFixed(2) : item.unit_price.toFixed(2)}
                       </p>
                     </div>
                     <p className="font-semibold">
-                      ${(item.quantity * item.unit_price).toFixed(2)}
+                      ${(item.quantity * (typeof item.unit_price === 'string' ? parseFloat(item.unit_price) : item.unit_price)).toFixed(2)}
                     </p>
                   </div>
                 </div>

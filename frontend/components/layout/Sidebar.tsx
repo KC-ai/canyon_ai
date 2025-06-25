@@ -5,10 +5,11 @@ import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 
 const navigation = [
-  { name: 'Home', href: '/', icon: '🏠' },
+  { name: 'Home', href: '/home', icon: '🏠' },
   { name: 'Quotes', href: '/quotes', icon: '💰' },
   { name: 'Create Quote', href: '/quotes/create', icon: '➕' },
   { name: 'Insights', href: '/insights', icon: '📈' },
+  { name: 'Pricing Rules', href: '/pricing-rules', icon: '⚙️' },
 ]
 
 export function Sidebar() {

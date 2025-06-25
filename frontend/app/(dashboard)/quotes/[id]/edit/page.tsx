@@ -132,9 +132,16 @@ export default function EditQuotePage() {
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
+    console.log('=== FORM SUBMIT TRIGGERED ===')
     e.preventDefault()
-    if (!quote) return
+    if (!quote) {
+      console.log('No quote found, aborting')
+      return
+    }
 
+    console.log('Quote ID:', quote.id)
+    console.log('Form data:', formData)
+    console.log('Items data:', items)
     setSaving(true)
     
     try {
@@ -143,12 +150,17 @@ export default function EditQuotePage() {
         items: items.filter(item => item.name.trim() !== '')
       }
 
-      await quotesApi.updateQuote(quote.id, updateData)
+      console.log('Updating quote with data:', updateData)
+      const result = await quotesApi.updateQuote(quote.id, updateData)
+      console.log('Quote update result:', result)
       showToast.success('Quote updated successfully!')
-      router.push(`/quotes/${quote.id}`)
+      // Don't redirect, let user see the success and stay on edit page
+      // router.push(`/quotes/${quote.id}`)
     } catch (err) {
-      showToast.error(err as Error)
-      console.error('Error updating quote:', err)
+      console.error('QUOTE UPDATE ERROR:', err)
+      console.error('Error details:', JSON.stringify(err, null, 2))
+      showToast.error(`Failed to update quote: ${err}`)
+      setError(`Failed to update quote: ${err}`)
     } finally {
       setSaving(false)
     }
@@ -156,13 +168,24 @@ export default function EditQuotePage() {
 
   // Handler for saving workflow changes
   const handleWorkflowSave = async (workflowData: ApprovalWorkflowCreate) => {
-    if (!workflow) return
+    console.log('=== HANDLE WORKFLOW SAVE CALLED ===')
+    console.log('Workflow data received:', workflowData)
+    console.log('Current workflow:', workflow)
+    
+    if (!workflow) {
+      console.log('No workflow found, returning')
+      return
+    }
+    
     setWorkflowSaving(true)
     try {
+      console.log('Calling workflowsApi.updateWorkflow with:', workflow.id, workflowData)
       const updated = await workflowsApi.updateWorkflow(workflow.id, workflowData)
+      console.log('Update result:', updated)
       setWorkflow(updated)
       showToast.success('Workflow updated successfully!')
     } catch (err) {
+      console.error('=== WORKFLOW SAVE ERROR ===', err)
       showToast.error('Failed to update workflow')
     } finally {
       setWorkflowSaving(false)
@@ -219,20 +242,6 @@ export default function EditQuotePage() {
                 onChange={(e) => handleInputChange('title', e.target.value)}
                 required
               />
-            </div>
-            <div>
-              <Label htmlFor="status">Status</Label>
-              <select
-                id="status"
-                value={formData.status}
-                onChange={(e) => handleInputChange('status', e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value={QuoteStatus.DRAFT}>Draft</option>
-                <option value={QuoteStatus.PENDING}>Pending</option>
-                <option value={QuoteStatus.APPROVED}>Approved</option>
-                <option value={QuoteStatus.REJECTED}>Rejected</option>
-              </select>
             </div>
             <div>
               <Label htmlFor="customer_name">Customer Name *</Label>

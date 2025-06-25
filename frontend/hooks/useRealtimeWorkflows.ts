@@ -77,10 +77,12 @@ export function useRealtimeWorkflows(initialWorkflows: Record<string, ApprovalWo
       const { workflowsApi } = await import('../lib/api')
       const workflow = await workflowsApi.getWorkflow(workflowId)
       
-      setWorkflows(prev => ({
-        ...prev,
-        [workflowId]: workflow
-      }))
+      if (workflow) {
+        setWorkflows(prev => ({
+          ...prev,
+          [workflowId]: workflow
+        }))
+      }
       
       setError('')
       return workflow

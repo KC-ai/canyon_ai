@@ -17,12 +17,17 @@ export function useRealtimeQuotes() {
       setLoading(true)
       console.log('Loading quotes...')
       const response = await quotesApi.getQuotes()
-      console.log('Quotes loaded:', response.quotes.length)
+      console.log('Quotes loaded successfully:', response.quotes.length, 'quotes')
       setQuotes(response.quotes)
       setError('')
     } catch (err) {
-      setError('Failed to load quotes')
-      console.error('Error loading quotes:', err)
+      console.error('Detailed error loading quotes:', {
+        error: err,
+        message: (err as any)?.message,
+        status: (err as any)?.status,
+        details: (err as any)?.details
+      })
+      setError(`Failed to load quotes: ${(err as any)?.message || 'Unknown error'}`)
     } finally {
       setLoading(false)
     }
@@ -152,17 +157,18 @@ export function useRealtimeQuotes() {
     loadQuotes()
   }, [loadQuotes])
 
-  // Set up real-time subscription
+  // Set up real-time subscription (temporarily disabled due to timeout issues)
   useEffect(() => {
-    // Listen to the shared channel for quote updates
+    // TODO: Re-enable when Supabase is properly configured
+    console.log('Real-time subscription disabled - using backend API only')
+    
+    // Uncomment below when ready to use Supabase real-time:
+    /*
     const channel = supabase.channel('shared_quotes_channel')
-
-    // Listen for quote changes
     channel
       .on('broadcast', { event: 'quote_updated' }, (payload) => {
         console.log('Real-time quote update:', payload)
         const updatedQuote = payload.payload as Quote
-        
         optimisticUpdate(prev => 
           prev.map(q => q.id === updatedQuote.id ? updatedQuote : q)
         )
@@ -170,9 +176,7 @@ export function useRealtimeQuotes() {
       .on('broadcast', { event: 'quote_created' }, (payload) => {
         console.log('Real-time quote created:', payload)
         const newQuote = payload.payload as Quote
-        
         optimisticUpdate(prev => {
-          // Don't duplicate if it already exists (optimistic update)
           if (prev.some(q => q.id === newQuote.id)) {
             return prev
           }
@@ -182,19 +186,18 @@ export function useRealtimeQuotes() {
       .on('broadcast', { event: 'quote_deleted' }, (payload) => {
         console.log('Real-time quote deleted:', payload)
         const quoteId = payload.payload.id
-        
         optimisticUpdate(prev => prev.filter(q => q.id !== quoteId))
       })
       .subscribe((status) => {
         console.log('Subscription status:', status)
       })
 
-    // Cleanup subscription
     return () => {
       console.log('Cleaning up subscription: shared_quotes_channel')
       channel.unsubscribe()
       supabase.removeChannel(channel)
     }
+    */
   }, [])
 
   return {

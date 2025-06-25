@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { QuoteItemCreate, QuoteStatus } from '@/types/quotes'
 import { ApprovalWorkflowCreate, WorkflowStepFormData, PersonaType } from '@/types/workflows'
@@ -68,30 +68,7 @@ export function QuoteCreationWizard() {
     auto_start: true,
     allow_parallel_steps: false,
     require_all_approvals: true,
-    steps: [
-      {
-        id: `step-1-${Date.now()}`,
-        name: 'Sales Review',
-        description: 'Initial sales team review',
-        persona: PersonaType.AE,
-        order: 1,
-        is_required: true,
-        auto_approve_threshold: '',
-        escalation_threshold: '',
-        max_processing_days: 2
-      },
-      {
-        id: `step-2-${Date.now()}`,
-        name: 'Deal Desk Review', 
-        description: 'Deal desk analysis and pricing review',
-        persona: PersonaType.DEAL_DESK,
-        order: 2,
-        is_required: true,
-        auto_approve_threshold: '',
-        escalation_threshold: '',
-        max_processing_days: 3
-      }
-    ]
+    steps: []
   })
 
   // Navigation
@@ -160,10 +137,127 @@ export function QuoteCreationWizard() {
     }, 0)
   }
 
+  // Generate dynamic workflow based on discount percentage
+  const generateDiscountBasedWorkflow = (): ApprovalWorkflowCreate => {
+    const maxDiscount = Math.max(...items.map(item => item.discount_percent || 0))
+    const steps = []
+    let order = 1
+
+    // Always include AE Review (first)
+    steps.push({
+      id: `step-${order}-${Date.now()}`,
+      name: 'AE Review',
+      description: 'Account Executive review and validation',
+      persona: PersonaType.AE,
+      order: order++,
+      is_required: true,
+      auto_approve_threshold: '',
+      escalation_threshold: '',
+      max_processing_days: 2
+    })
+
+    // Always include Deal Desk Review (second)
+    steps.push({
+      id: `step-${order}-${Date.now()}`,
+      name: 'Deal Desk Review',
+      description: 'Deal desk pricing and discount analysis',
+      persona: PersonaType.DEAL_DESK,
+      order: order++,
+      is_required: true,
+      auto_approve_threshold: '',
+      escalation_threshold: '',
+      max_processing_days: 3
+    })
+
+    // Add CRO if discount is 15-40% or >40%
+    if (maxDiscount >= 15) {
+      steps.push({
+        id: `step-${order}-${Date.now()}`,
+        name: 'CRO Approval',
+        description: `CRO approval required for ${maxDiscount}% discount`,
+        persona: PersonaType.CRO,
+        order: order++,
+        is_required: true,
+        auto_approve_threshold: '',
+        escalation_threshold: '',
+        max_processing_days: 5
+      })
+    }
+
+    // Add Finance if discount >40%
+    if (maxDiscount > 40) {
+      steps.push({
+        id: `step-${order}-${Date.now()}`,
+        name: 'Finance Approval',
+        description: `Finance approval required for ${maxDiscount}% discount (>40%)`,
+        persona: PersonaType.FINANCE,
+        order: order++,
+        is_required: true,
+        auto_approve_threshold: '',
+        escalation_threshold: '',
+        max_processing_days: 5
+      })
+    }
+
+    // Always include Legal Review (second to last)
+    steps.push({
+      id: `step-${order}-${Date.now()}`,
+      name: 'Legal Review',
+      description: 'Legal team contract and compliance review',
+      persona: PersonaType.LEGAL,
+      order: order++,
+      is_required: true,
+      auto_approve_threshold: '',
+      escalation_threshold: '',
+      max_processing_days: 7
+    })
+
+    // Always include Customer (final step)
+    steps.push({
+      id: `step-${order}-${Date.now()}`,
+      name: 'Customer Delivery',
+      description: 'Final approved quote delivered to customer',
+      persona: PersonaType.CUSTOMER,
+      order: order++,
+      is_required: true,
+      auto_approve_threshold: '',
+      escalation_threshold: '',
+      max_processing_days: 1
+    })
+
+    // Determine workflow name
+    let workflowName = 'Standard Approval'
+    if (maxDiscount > 40) {
+      workflowName = `High Discount Approval (${maxDiscount}%)`
+    } else if (maxDiscount >= 15) {
+      workflowName = `Medium Discount Approval (${maxDiscount}%)`
+    } else if (maxDiscount > 0) {
+      workflowName = `Standard Approval (${maxDiscount}%)`
+    }
+
+    return {
+      name: workflowName,
+      description: `Dynamic approval workflow for max discount of ${maxDiscount}%`,
+      auto_start: true,
+      allow_parallel_steps: false,
+      require_all_approvals: true,
+      steps
+    }
+  }
+
   // Workflow handlers
   const handleWorkflowUpdate = async (workflow: ApprovalWorkflowCreate) => {
+    console.log('Updating workflow data in QuoteCreationWizard:', workflow)
     setWorkflowData(workflow)
   }
+
+  // Auto-update workflow when items change
+  useEffect(() => {
+    if (items.length > 0 && items.some(item => item.name && item.unit_price > 0)) {
+      const dynamicWorkflow = generateDiscountBasedWorkflow()
+      setWorkflowData(dynamicWorkflow)
+    }
+  }, [items])
 
   // Validation
   const validateCurrentStep = (): boolean => {
@@ -177,7 +271,12 @@ export function QuoteCreationWizard() {
         }
         return hasRequiredFields
       case 1: // Items
-        return items.length > 0 && items.every(item => item.name && item.unit_price > 0)
+        return items.length > 0 && items.every(item => 
+          item.name && 
+          item.unit_price > 0 && 
+          item.discount_percent >= 0 && 
+          item.discount_percent <= 100
+        )
       case 2: // Workflow
         return workflowData.steps.length > 0
       case 3: // Review
@@ -347,7 +446,7 @@ export function QuoteCreationWizard() {
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
                     <div>
-                      <Label>Discount (%)</Label>
+                      <Label className="text-orange-600 font-medium">Discount (%) *</Label>
                       <Input
                         type="number"
                         min="0"
@@ -356,6 +455,8 @@ export function QuoteCreationWizard() {
                         value={item.discount_percent || 0}
                         onChange={(e) => handleItemChange(index, 'discount_percent', parseFloat(e.target.value) || 0)}
                         placeholder="0"
+                        className="border-orange-300 focus:border-orange-500 focus:ring-orange-500"
+                        required
                       />
                     </div>
                     <div>
@@ -413,16 +514,44 @@ export function QuoteCreationWizard() {
         )
 
       case 2: // Workflow Configuration
+        const maxDiscount = Math.max(...items.map(item => item.discount_percent || 0))
+        
         return (
           <div className="space-y-6">
             <div>
               <h3 className="text-lg font-medium mb-2">Configure Approval Workflow</h3>
-              <p className="text-gray-600 mb-6">
-                Set up the approval process for this quote. You can drag and drop steps to reorder them.
+              <p className="text-gray-600 mb-4">
+                The approval workflow has been automatically configured based on your discount percentages. You can drag and drop steps to reorder them.
               </p>
+              
+              {/* Discount-based workflow explanation */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <h4 className="font-medium text-blue-900 mb-2">Dynamic Workflow Rules</h4>
+                <div className="text-sm text-blue-800 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span>Max Discount:</span>
+                    <span className="font-medium">{maxDiscount}%</span>
+                  </div>
+                  <div className="border-t border-blue-200 mt-2 pt-2 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2 h-2 rounded-full ${maxDiscount >= 0 ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                      <span>AE + Deal Desk + Legal + Customer (Always required)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2 h-2 rounded-full ${maxDiscount >= 15 ? 'bg-orange-500' : 'bg-gray-300'}`}></div>
+                      <span>+ CRO Approval (15-40% discount)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2 h-2 rounded-full ${maxDiscount > 40 ? 'bg-red-500' : 'bg-gray-300'}`}></div>
+                      <span>+ Finance Approval (&gt;40% discount)</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
+            
             <WorkflowBuilder
-              initialWorkflow={workflowData}
+              initialWorkflow={workflowData as any}
               onSave={handleWorkflowUpdate}
               onCancel={() => {}} // No-op since we're in a wizard
               loading={false}

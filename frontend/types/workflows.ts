@@ -7,8 +7,7 @@ export enum PersonaType {
   CRO = "cro",
   LEGAL = "legal",
   FINANCE = "finance",
-  SALES_MANAGER = "sales_manager",
-  VP_SALES = "vp_sales"
+  CUSTOMER = "customer"
 }
 
 export enum WorkflowStepStatus {
@@ -282,7 +281,7 @@ export interface WorkflowStepCardProps {
 }
 
 export interface WorkflowBuilderProps {
-  initialWorkflow?: Partial<ApprovalWorkflowCreate>
+  initialWorkflow?: ApprovalWorkflow
   onSave: (workflow: ApprovalWorkflowCreate) => Promise<void>
   onCancel: () => void
   loading?: boolean
@@ -491,8 +490,7 @@ export const PersonaDisplayNames: Record<PersonaType, string> = {
   [PersonaType.CRO]: "Chief Revenue Officer", 
   [PersonaType.LEGAL]: "Legal Team",
   [PersonaType.FINANCE]: "Finance Team",
-  [PersonaType.SALES_MANAGER]: "Sales Manager",
-  [PersonaType.VP_SALES]: "VP of Sales"
+  [PersonaType.CUSTOMER]: "Customer"
 }
 
 export const PersonaColors: Record<PersonaType, string> = {
@@ -501,8 +499,7 @@ export const PersonaColors: Record<PersonaType, string> = {
   [PersonaType.CRO]: "purple",
   [PersonaType.LEGAL]: "orange",
   [PersonaType.FINANCE]: "red",
-  [PersonaType.SALES_MANAGER]: "teal",
-  [PersonaType.VP_SALES]: "indigo"
+  [PersonaType.CUSTOMER]: "gray"
 }
 
 export const WorkflowStatusColors: Record<WorkflowStatus, string> = {

@@ -16,12 +16,14 @@ import { useRealtimeWorkflow, ConflictResolution } from '../../hooks/useRealtime
 import WorkflowProgress from '../workflows/WorkflowProgress'
 import ConflictResolutionModal from '../workflows/ConflictResolutionModal'
 import { showToast } from '@/lib/toast'
+import { quotesApi } from '../../lib/quotes'
 
 // Props for QuoteCard component
 interface QuoteCardProps {
   quote: Quote
   workflow?: ApprovalWorkflow | null
   onWorkflowAction?: (workflowId: string, stepOrder: number, action: WorkflowActionRequest) => Promise<void>
+  onQuoteDeleted?: () => void
   compact?: boolean
   showWorkflow?: boolean
   className?: string
@@ -48,6 +50,12 @@ const QuickActionButtons: React.FC<{
   
   const handleQuickAction = async (action: ApprovalAction, comments?: string) => {
     if (!nextStep) return
+    
+    // Double-check step status before acting
+    if (nextStep.status !== WorkflowStepStatus.PENDING && nextStep.status !== WorkflowStepStatus.IN_PROGRESS) {
+      console.warn(`Cannot ${action} step ${nextStep.order}: status is ${nextStep.status}`)
+      return
+    }
     
     setLoading(action)
     try {
@@ -81,7 +89,7 @@ const QuickActionButtons: React.FC<{
             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
           </svg>
         )}
-        Quick Approve
+        Approve
       </button>
       
       <button
@@ -96,7 +104,7 @@ const QuickActionButtons: React.FC<{
             <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
           </svg>
         )}
-        Quick Reject
+        Reject
       </button>
     </div>
   )
@@ -111,7 +119,7 @@ const WorkflowStatusIndicator: React.FC<{
     switch (workflow.status) {
       case WorkflowStatus.ACTIVE:
         return {
-          text: compact ? 'Pending Approval' : 'Awaiting Approval',
+          text: 'Pending Approval',
           classes: 'bg-yellow-100 text-yellow-800 border-yellow-200',
           icon: (
             <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
@@ -163,6 +171,7 @@ const QuoteCard: React.FC<QuoteCardProps> = ({
   quote,
   workflow: initialWorkflow,
   onWorkflowAction,
+  onQuoteDeleted,
   compact = false,
   showWorkflow = true,
   className = '',
@@ -170,6 +179,7 @@ const QuoteCard: React.FC<QuoteCardProps> = ({
 }) => {
   const [isExpanded, setIsExpanded] = useState(false)
   const [conflictModalOpen, setConflictModalOpen] = useState<string | null>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
   
   // Use real-time workflow hook if enabled and workflow exists
   const {
@@ -261,6 +271,24 @@ const QuoteCard: React.FC<QuoteCardProps> = ({
   const isTemporary = quote.id.startsWith('temp-')
   const needsApproval = quote.status === QuoteStatus.PENDING && workflow
   
+  const handleDeleteQuote = async () => {
+    if (!confirm('Are you sure you want to delete this quote? This action cannot be undone.')) {
+      return
+    }
+    
+    setDeleteLoading(true)
+    try {
+      await quotesApi.deleteQuote(quote.id)
+      showToast.success('Quote deleted successfully')
+      onQuoteDeleted?.()
+    } catch (error) {
+      console.error('Error deleting quote:', error)
+      showToast.error('Failed to delete quote')
+    } finally {
+      setDeleteLoading(false)
+    }
+  }
+  
   return (
     <div className={`relative bg-white border rounded-lg shadow hover:shadow-md transition-all duration-200 ${
       needsApproval ? 'ring-2 ring-yellow-200 border-yellow-300' : 'border-gray-200 hover:border-gray-300'
@@ -290,18 +318,9 @@ const QuoteCard: React.FC<QuoteCardProps> = ({
       <div className="p-4">
         {/* Statuses Row */}
         <div className="flex items-center gap-4 mb-2">
-          <div className="flex items-center gap-1">
-            <span className="font-semibold text-xs text-gray-500">Quote Status:</span>
-            <span
-              className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getQuoteStatusColor(quote.status)}`}
-              title="This is the overall business status of the quote (Draft, Pending, Approved, Rejected)"
-            >
-              {quote.status.charAt(0).toUpperCase() + quote.status.slice(1)}
-            </span>
-          </div>
           {workflow && (
             <div className="flex items-center gap-1">
-              <span className="font-semibold text-xs text-gray-500">Workflow Status:</span>
+              <span className="font-semibold text-xs text-gray-500">Status:</span>
               <span
                 title="This is the status of the approval workflow for this quote (Awaiting Approval, Complete, etc.)"
               >
@@ -334,6 +353,34 @@ const QuoteCard: React.FC<QuoteCardProps> = ({
                 {workflow && showWorkflow && (
                   <WorkflowStatusIndicator workflow={workflow} compact={compact} />
                 )}
+                
+                {/* Action Icons */}
+                <div className="flex items-center gap-1 ml-2">
+                  <Link
+                    href={`/quotes/${quote.id}/edit`}
+                    className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                    title="Edit quote"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </Link>
+                  
+                  <button
+                    onClick={handleDeleteQuote}
+                    disabled={deleteLoading || isTemporary}
+                    className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Delete quote"
+                  >
+                    {deleteLoading ? (
+                      <div className="w-4 h-4 border border-red-600 border-t-transparent rounded-full animate-spin"></div>
+                    ) : (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
             

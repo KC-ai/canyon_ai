@@ -1,4 +1,6 @@
-from fastapi import APIRouter, HTTPException, Depends, Query, status, Path
+from fastapi import APIRouter, HTTPException, Depends, Query, status, Path, Request
+from fastapi.exceptions import RequestValidationError
+from pydantic import ValidationError
 from typing import List, Optional
 from datetime import datetime
 from app.models.workflows import (
@@ -97,6 +99,7 @@ async def get_workflows(
 
 @router.put("/{workflow_id}", response_model=ApprovalWorkflow)
 async def update_workflow(
+    request: Request,
     workflow_id: str = Path(..., description="Workflow ID"),
     workflow_update: ApprovalWorkflowCreate = ...,
     user_id: str = Depends(get_current_user_id)
@@ -104,15 +107,20 @@ async def update_workflow(
     """Update entire workflow configuration (name, description, steps, triggers, etc.)"""
     try:
         logger.info(f"Updating workflow configuration for workflow {workflow_id}")
+        logger.debug(f"Received workflow_update data: {workflow_update}")
+        logger.debug(f"Workflow name: '{workflow_update.name}'")
+        logger.debug(f"Number of steps: {len(workflow_update.steps) if workflow_update.steps else 0}")
         
         # Validate workflow data
         if not workflow_update.name or not workflow_update.name.strip():
+            logger.error(f"Workflow name validation failed: name='{workflow_update.name}'")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Workflow name is required"
             )
         
         if not workflow_update.steps:
+            logger.error(f"No steps provided in workflow update")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="At least one workflow step is required"
@@ -120,11 +128,23 @@ async def update_workflow(
         
         # Check for duplicate step orders
         orders = [step.order for step in workflow_update.steps]
+        logger.debug(f"Step orders: {orders}")
         if len(orders) != len(set(orders)):
+            logger.error(f"Duplicate step orders found: {orders}")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Step orders must be unique"
             )
+        
+        # Additional step validation
+        for i, step in enumerate(workflow_update.steps):
+            logger.debug(f"Step {i}: name='{step.name}', order={step.order}, persona={step.persona}")
+            if not step.name or not step.name.strip():
+                logger.error(f"Step {i} has empty name")
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Step {i+1} name is required"
+                )
         
         workflow = await WorkflowService.update_workflow(
             workflow_id, workflow_update, user_id
@@ -151,8 +171,24 @@ async def update_workflow(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
+    except ValidationError as e:
+        logger.error(f"Pydantic validation error: {str(e)}")
+        logger.error(f"Validation error details: {e.errors()}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Validation error: {str(e)}"
+        )
+    except ValueError as e:
+        logger.error(f"Value error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Validation error: {str(e)}"
+        )
     except Exception as e:
         logger.error(f"Failed to update workflow: {str(e)}")
+        logger.error(f"Exception type: {type(e)}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to update workflow"

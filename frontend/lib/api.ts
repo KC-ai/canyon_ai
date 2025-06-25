@@ -33,6 +33,11 @@ class ApiClient {
   private async getAuthHeaders() {
     try {
       const { data: { session } } = await supabase.auth.getSession()
+      console.log('Session check:', {
+        hasSession: !!session,
+        hasAccessToken: !!session?.access_token,
+        userId: session?.user?.id
+      })
       return {
         'Content-Type': 'application/json',
         ...(session?.access_token && {
@@ -127,7 +132,18 @@ class ApiClient {
         throw networkError
       }
 
-      throw error
+      // Ensure we always throw a proper error object
+      if (error && typeof error === 'object') {
+        throw error
+      }
+      
+      const unknownError: ApiError = {
+        message: (error as any)?.message || 'Unknown error occurred',
+        status: 0,
+        code: 'UNKNOWN_ERROR',
+        details: error
+      }
+      throw unknownError
     }
   }
 
@@ -190,14 +206,14 @@ export const workflowsApi = {
 
   // Update workflow steps order (from drag-and-drop)
   async updateWorkflowSteps(workflowId: string, result: DragDropResult): Promise<ApprovalWorkflow> {
+    const updateData = {
+      steps: result.items.map((item, index) => ({
+        ...item,
+        order: index + 1
+      }))
+    }
+    
     try {
-      const updateData = {
-        steps: result.items.map((item, index) => ({
-          ...item,
-          order: index + 1
-        }))
-      }
-      
       return await api.put(`/api/workflows/${workflowId}/steps`, updateData)
     } catch (error) {
       console.error(`Failed to update workflow ${workflowId} steps:`, error)
@@ -280,7 +296,11 @@ export const workflowsApi = {
     updateData: Partial<ApprovalWorkflowCreate>
   ): Promise<ApprovalWorkflow> {
     try {
-      return await api.put(`/api/workflows/${workflowId}`, updateData)
+      // Ensure undefined values are converted to null for proper JSON serialization
+      const cleanedUpdateData = JSON.parse(JSON.stringify(updateData, (key, value) => 
+        value === undefined ? null : value
+      ))
+      return await api.put(`/api/workflows/${workflowId}`, cleanedUpdateData)
     } catch (error) {
       console.error(`Failed to update workflow ${workflowId}:`, error)
       throw this.handleWorkflowError(error, 'update workflow', workflowId)

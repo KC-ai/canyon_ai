@@ -13,7 +13,7 @@ export interface QuoteItem {
   description?: string
   quantity: number
   unit_price: number
-  discount_percent?: number
+  discount_percent: number  // Made mandatory
   discount_amount?: number
   created_at: string
   updated_at: string
@@ -24,7 +24,7 @@ export interface QuoteItemCreate {
   description?: string
   quantity: number
   unit_price: number
-  discount_percent?: number
+  discount_percent: number  // Made mandatory
   discount_amount?: number
 }
 

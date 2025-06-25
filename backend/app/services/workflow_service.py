@@ -55,6 +55,192 @@ class WorkflowService:
     """Production-ready workflow service with comprehensive approval logic"""
     
     @staticmethod
+    async def create_discount_based_workflow(quote: Quote, user_id: str) -> ApprovalWorkflow:
+        """
+        Creates dynamic approval workflow based on discount percentage thresholds
+        
+        Default personas: AE, Deal Desk, Legal, Customer
+        Add CRO if discount 15-40%
+        Add Finance if discount >40%
+        
+        Args:
+            quote: Quote object to create workflow for
+            user_id: User creating the workflow
+            
+        Returns:
+            ApprovalWorkflow: Created workflow with dynamic steps
+        """
+        try:
+            logger.info(f"Creating discount-based workflow for quote {quote.id}")
+            
+            # Calculate maximum discount percentage
+            max_discount = quote.max_discount_percent if hasattr(quote, 'max_discount_percent') else Decimal('0')
+            logger.info(f"Max discount percentage: {max_discount}%")
+            
+            workflow_id = str(uuid.uuid4())
+            now = datetime.utcnow()
+            
+            # Base workflow steps: AE -> Deal Desk -> Legal -> Customer
+            steps = []
+            order = 1
+            
+            # 1. AE Review (always first)
+            steps.append(WorkflowStep(
+                id=str(uuid.uuid4()),
+                workflow_id=workflow_id,
+                name="AE Review",
+                description="Account Executive review and validation",
+                persona=PersonaType.AE,
+                order=order,
+                is_required=True,
+                max_processing_days=2,
+                status=WorkflowStepStatus.PENDING,
+                created_at=now,
+                updated_at=now
+            ))
+            order += 1
+            
+            # 2. Deal Desk Review (always second)
+            steps.append(WorkflowStep(
+                id=str(uuid.uuid4()),
+                workflow_id=workflow_id,
+                name="Deal Desk Review",
+                description="Deal desk pricing and discount analysis",
+                persona=PersonaType.DEAL_DESK,
+                order=order,
+                is_required=True,
+                max_processing_days=3,
+                status=WorkflowStepStatus.PENDING,
+                created_at=now,
+                updated_at=now
+            ))
+            order += 1
+            
+            # 3. CRO Review (if discount 15-40%)
+            if max_discount >= 15 and max_discount <= 40:
+                steps.append(WorkflowStep(
+                    id=str(uuid.uuid4()),
+                    workflow_id=workflow_id,
+                    name="CRO Approval",
+                    description=f"CRO approval required for {max_discount}% discount",
+                    persona=PersonaType.CRO,
+                    order=order,
+                    is_required=True,
+                    max_processing_days=5,
+                    status=WorkflowStepStatus.PENDING,
+                    created_at=now,
+                    updated_at=now
+                ))
+                order += 1
+            
+            # 4. Finance Review (if discount >40%)
+            if max_discount > 40:
+                # Add CRO first if not already added
+                if max_discount > 40:  # Always add CRO for >40% discounts
+                    steps.append(WorkflowStep(
+                        id=str(uuid.uuid4()),
+                        workflow_id=workflow_id,
+                        name="CRO Approval",
+                        description=f"CRO approval required for {max_discount}% discount",
+                        persona=PersonaType.CRO,
+                        order=order,
+                        is_required=True,
+                        max_processing_days=5,
+                        status=WorkflowStepStatus.PENDING,
+                        created_at=now,
+                        updated_at=now
+                    ))
+                    order += 1
+                
+                # Add Finance for >40% discounts
+                steps.append(WorkflowStep(
+                    id=str(uuid.uuid4()),
+                    workflow_id=workflow_id,
+                    name="Finance Approval",
+                    description=f"Finance approval required for {max_discount}% discount (>40%)",
+                    persona=PersonaType.FINANCE,
+                    order=order,
+                    is_required=True,
+                    max_processing_days=5,
+                    status=WorkflowStepStatus.PENDING,
+                    created_at=now,
+                    updated_at=now
+                ))
+                order += 1
+            
+            # 5. Legal Review (always second to last)
+            steps.append(WorkflowStep(
+                id=str(uuid.uuid4()),
+                workflow_id=workflow_id,
+                name="Legal Review",
+                description="Legal team contract and compliance review",
+                persona=PersonaType.LEGAL,
+                order=order,
+                is_required=True,
+                max_processing_days=7,
+                status=WorkflowStepStatus.PENDING,
+                created_at=now,
+                updated_at=now
+            ))
+            order += 1
+            
+            # 6. Customer (always final step)
+            steps.append(WorkflowStep(
+                id=str(uuid.uuid4()),
+                workflow_id=workflow_id,
+                name="Customer Delivery",
+                description="Final approved quote delivered to customer",
+                persona=PersonaType.CUSTOMER,
+                order=order,
+                is_required=True,
+                max_processing_days=1,
+                status=WorkflowStepStatus.PENDING,
+                created_at=now,
+                updated_at=now
+            ))
+            order += 1
+            
+            # Determine workflow name based on discount
+            if max_discount > 40:
+                workflow_name = f"High Discount Approval ({max_discount}%)"
+            elif max_discount >= 15:
+                workflow_name = f"Medium Discount Approval ({max_discount}%)"
+            else:
+                workflow_name = f"Standard Approval ({max_discount}%)"
+            
+            # Create workflow
+            workflow = ApprovalWorkflow(
+                id=workflow_id,
+                user_id=user_id,
+                name=f"{workflow_name} - {quote.title}",
+                description=f"Dynamic approval workflow for quote {quote.id} with {max_discount}% max discount",
+                quote_id=quote.id,
+                status=WorkflowStatus.ACTIVE,
+                is_active=True,
+                trigger_discount_percent=max_discount,
+                auto_start=True,
+                allow_parallel_steps=False,
+                require_all_approvals=True,
+                steps=steps,
+                started_at=now,
+                created_at=now,
+                updated_at=now
+            )
+            
+            # Save to storage
+            await WorkflowService._save_workflow(workflow)
+            
+            # Assign first step
+            await WorkflowService._assign_next_step(workflow)
+            
+            logger.info(f"Discount-based workflow created: {workflow_id} with {len(steps)} steps for {max_discount}% discount")
+            return workflow
+            
+        except Exception as e:
+            logger.error(f"Failed to create discount-based workflow: {str(e)}")
+            raise StorageError("create_discount_based_workflow", str(e))
+
+    @staticmethod
     async def create_default_workflow(quote: Quote, user_id: str) -> ApprovalWorkflow:
         """
         Creates standard approval chain based on quote amount and characteristics
@@ -247,8 +433,8 @@ class WorkflowService:
             # Get existing workflow
             existing_workflow = await WorkflowService.get_workflow(workflow_id, user_id)
             
-            # Validate workflow can be updated
-            if existing_workflow.status not in [WorkflowStatus.DRAFT, WorkflowStatus.ACTIVE]:
+            # Validate workflow can be updated - allow FAILED workflows to be edited
+            if existing_workflow.status not in [WorkflowStatus.DRAFT, WorkflowStatus.ACTIVE, WorkflowStatus.FAILED]:
                 raise WorkflowValidationError(f"Cannot update workflow in {existing_workflow.status} status")
             
             # Prevent updates to workflows with completed/rejected steps unless it's just metadata
@@ -750,9 +936,11 @@ class WorkflowService:
     @staticmethod
     def _calculate_discount_percentage(quote: Quote) -> Optional[Decimal]:
         """Calculate discount percentage if applicable"""
-        # This would be implemented based on business logic
-        # For now, return None as we don't have original pricing data
-        return None
+        if hasattr(quote, 'max_discount_percent'):
+            return quote.max_discount_percent
+        elif hasattr(quote, 'overall_discount_percent'):
+            return quote.overall_discount_percent
+        return Decimal('0')
     
     @staticmethod
     def _should_auto_approve(step_template: WorkflowStepCreate, quote_amount: Decimal, discount_percent: Optional[Decimal]) -> bool:

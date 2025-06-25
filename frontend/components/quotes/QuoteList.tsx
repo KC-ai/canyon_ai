@@ -146,6 +146,7 @@ export function QuoteList() {
           quote={quote}
           workflow={quote.workflow_id ? workflows[quote.id] : undefined}
           onWorkflowAction={handleWorkflowAction}
+          onQuoteDeleted={loadQuotes}
           showWorkflow={true}
           compact={false}
           useRealtime={true}
