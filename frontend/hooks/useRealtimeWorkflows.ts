@@ -357,6 +357,7 @@ export function useRealtimeWorkflows(initialWorkflows: Record<string, ApprovalWo
       })
       .subscribe((status) => {
         console.log(`Workflow ${workflowId} subscription status:`, status)
+        // DISABLED auto-reconnect to prevent infinite loops
       })
     
     return () => {

@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 # TODO: Replace with your actual Supabase database URL
 # Get this from: Supabase Dashboard → Settings → Database → Connection string → URI
 #Horus@80u1der!
-SUPABASE_DB_URL = "postgresql://postgres:Horus%4080u1der%21@db.hdcsxkxohgtpitfljqhx.supabase.co:5432/postgres"
+SUPABASE_DB_URL = ""
 
 # Note: Special characters in password are URL-encoded:
 # @ becomes %40

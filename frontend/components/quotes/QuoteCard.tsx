@@ -61,7 +61,7 @@ const QuickActionButtons: React.FC<{
     try {
       await onAction(nextStep.order, {
         action,
-        comments,
+        comments: comments || (action === ApprovalAction.REJECT ? 'Quick rejection from quote card' : undefined),
         rejection_reason: action === ApprovalAction.REJECT ? (comments || 'Quick rejection from quote card') : undefined
       })
       
@@ -147,6 +147,16 @@ const WorkflowStatusIndicator: React.FC<{
             </svg>
           )
         }
+      case WorkflowStatus.CANCELLED:
+        return {
+          text: compact ? 'Rejected' : 'Workflow Rejected',
+          classes: 'bg-red-100 text-red-800 border-red-200',
+          icon: (
+            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
+          )
+        }
       default:
         return {
           text: 'Unknown Status',
@@ -203,21 +213,6 @@ const QuoteCard: React.FC<QuoteCardProps> = ({
     }
   }, [activeConflicts.length, conflictModalOpen])
   
-  const getQuoteStatusColor = (status: QuoteStatus) => {
-    switch (status) {
-      case QuoteStatus.APPROVED:
-        return 'bg-green-100 text-green-800'
-      case QuoteStatus.PENDING:
-        return 'bg-yellow-100 text-yellow-800'
-      case QuoteStatus.REJECTED:
-        return 'bg-red-100 text-red-800'
-      case QuoteStatus.EXPIRED:
-        return 'bg-gray-100 text-gray-800'
-      case QuoteStatus.DRAFT:
-      default:
-        return 'bg-blue-100 text-blue-800'
-    }
-  }
   
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -344,12 +339,6 @@ const QuoteCard: React.FC<QuoteCardProps> = ({
               </Link>
               
               <div className="flex items-center gap-2 flex-shrink-0">
-                <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${
-                  getQuoteStatusColor(quote.status)
-                }`}>
-                  {quote.status.charAt(0).toUpperCase() + quote.status.slice(1)}
-                </span>
-                
                 {workflow && showWorkflow && (
                   <WorkflowStatusIndicator workflow={workflow} compact={compact} />
                 )}

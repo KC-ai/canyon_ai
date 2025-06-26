@@ -258,7 +258,14 @@ export const workflowsApi = {
   ): Promise<ApprovalWorkflow> {
     try {
       // Ensure rejection reason is provided for reject actions
+      console.log('Reject action validation:', { 
+        action: action.action, 
+        rejection_reason: action.rejection_reason,
+        rejection_reason_trimmed: action.rejection_reason?.trim()
+      })
+      
       if (action.action === 'reject' && (!action.rejection_reason || action.rejection_reason.trim() === '')) {
+        console.error('Rejection reason validation failed:', action)
         throw new Error('Rejection reason is required when rejecting a step')
       }
       

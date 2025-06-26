@@ -260,6 +260,7 @@ const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
   const [lastSavedData, setLastSavedData] = useState<WorkflowFormData>(formData)
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
   const [confirmAction, setConfirmAction] = useState<{ action: () => void; title: string; message: string } | null>(null)
+  const [confirmLoading, setConfirmLoading] = useState(false)
   
   // Refs for cleanup and tracking
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -510,17 +511,29 @@ const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     setShowConfirmDialog(true)
   }, [])
 
-  const handleConfirmAction = useCallback(() => {
+  const handleConfirmAction = useCallback(async () => {
+    console.log('=== CONFIRM ACTION TRIGGERED ===')
     if (confirmAction) {
-      confirmAction.action()
+      console.log('Executing confirm action:', confirmAction.title)
+      setConfirmLoading(true)
+      try {
+        await confirmAction.action()
+        console.log('Confirm action completed successfully')
+      } catch (error) {
+        console.error('Error in confirm action:', error)
+      }
+      setConfirmLoading(false)
       setShowConfirmDialog(false)
       setConfirmAction(null)
+      console.log('Confirm dialog closed')
     }
   }, [confirmAction])
 
   const handleCancelConfirmation = useCallback(() => {
+    console.log('=== CANCEL CONFIRMATION TRIGGERED ===')
     setShowConfirmDialog(false)
     setConfirmAction(null)
+    console.log('Confirm dialog cancelled and closed')
   }, [])
 
   // Template loading function
@@ -865,11 +878,13 @@ const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     console.log('=== STEP REMOVE TRIGGERED ===')
     console.log('Index:', index)
     console.log('Current steps:', formData.steps)
+    console.log('showConfirmDialog state:', showConfirmDialog)
+    console.log('confirmAction state:', confirmAction)
     
     const stepToRemove = formData.steps[index]
     console.log('Step to remove:', stepToRemove)
     
-    const performRemoval = () => {
+    const performRemoval = async () => {
       console.log('=== PERFORMING REMOVAL ===')
       try {
         // Push to undo stack before removal
@@ -901,7 +916,8 @@ const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
               auto_start: true,
               allow_parallel_steps: false,
               require_all_approvals: true,
-              steps: reorderedSteps.filter(step => step.persona && step.persona !== '').map(step => ({
+              is_active: true,
+              steps: reorderedSteps.filter(step => step.persona && step.persona.trim() !== '').map(step => ({
                 name: step.name,
                 description: step.description,
                 persona: step.persona as PersonaType,
@@ -914,9 +930,11 @@ const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
             }
             
             console.log('Calling onSave after step removal:', updateData)
-            onSave(updateData)
+            await onSave(updateData)
           } catch (error) {
             console.error('Error calling onSave after removal:', error)
+            setWorkflowState(prev => ({ ...prev, error: 'Failed to save after removing step' }))
+            throw error // Re-throw to be handled by the confirmation dialog
           }
         }
         
@@ -925,6 +943,7 @@ const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       } catch (err) {
         console.error('=== ERROR IN REMOVAL ===', err)
         setWorkflowState(prev => ({ ...prev, error: 'Failed to remove step' }))
+        throw err // Re-throw so the confirmation dialog can handle it
       }
     }
     
@@ -1360,7 +1379,7 @@ const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
         onConfirm={handleConfirmAction}
         onCancel={handleCancelConfirmation}
         confirmButtonType={confirmAction?.title.includes('Remove') || confirmAction?.title.includes('Discard') ? 'danger' : 'primary'}
-        loading={workflowState.isSaving}
+        loading={confirmLoading}
       />
     </div>
   )

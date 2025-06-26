@@ -32,7 +32,7 @@ export default function EditQuotePage() {
   })
 
   const [items, setItems] = useState<QuoteItemCreate[]>([
-    { name: '', description: '', quantity: 1, unit_price: 0 }
+    { name: '', description: '', quantity: 1, unit_price: 0, discount_percent: 0, discount_amount: 0 }
   ])
 
   const [workflow, setWorkflow] = useState<ApprovalWorkflow | null>(null)
@@ -62,7 +62,9 @@ export default function EditQuotePage() {
             name: item.name,
             description: item.description || '',
             quantity: item.quantity,
-            unit_price: item.unit_price
+            unit_price: item.unit_price,
+            discount_percent: item.discount_percent || 0,
+            discount_amount: item.discount_amount || 0
           })))
         }
         
@@ -118,7 +120,7 @@ export default function EditQuotePage() {
   }
 
   const addItem = () => {
-    setItems(prev => [...prev, { name: '', description: '', quantity: 1, unit_price: 0 }])
+    setItems(prev => [...prev, { name: '', description: '', quantity: 1, unit_price: 0, discount_percent: 0, discount_amount: 0 }])
   }
 
   const removeItem = (index: number) => {
@@ -127,8 +129,25 @@ export default function EditQuotePage() {
     }
   }
 
+  const calculateItemDiscount = (item: QuoteItemCreate): number => {
+    const subtotal = item.quantity * item.unit_price
+    let discount = 0
+    
+    if (item.discount_amount && item.discount_amount > 0) {
+      discount = item.discount_amount
+    } else if (item.discount_percent && item.discount_percent > 0) {
+      discount = subtotal * (item.discount_percent / 100)
+    }
+    
+    return Math.min(discount, subtotal)
+  }
+
   const calculateTotal = () => {
-    return items.reduce((total, item) => total + (item.quantity * item.unit_price), 0)
+    return items.reduce((total, item) => {
+      const subtotal = item.quantity * item.unit_price
+      const discount = calculateItemDiscount(item)
+      return total + (subtotal - discount)
+    }, 0)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -317,23 +336,64 @@ export default function EditQuotePage() {
                     />
                   </div>
                   <div className="flex items-end">
-                    <div className="flex-1">
-                      <Label>Total</Label>
-                      <div className="font-semibold text-lg">
-                        ${(item.quantity * item.unit_price).toFixed(2)}
-                      </div>
-                    </div>
                     {items.length > 1 && (
                       <Button
                         type="button"
                         onClick={() => removeItem(index)}
                         variant="outline"
-                        className="ml-2"
+                        className="mb-1"
                       >
                         Remove
                       </Button>
                     )}
                   </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                  <div>
+                    <Label className="text-orange-600 font-medium">Discount (%) *</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.1"
+                      value={item.discount_percent || 0}
+                      onChange={(e) => handleItemChange(index, 'discount_percent', parseFloat(e.target.value) || 0)}
+                      placeholder="0"
+                      className="border-orange-300 focus:border-orange-500 focus:ring-orange-500"
+                    />
+                  </div>
+                  <div>
+                    <Label>Discount Amount ($)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={item.discount_amount || 0}
+                      onChange={(e) => handleItemChange(index, 'discount_amount', parseFloat(e.target.value) || 0)}
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+                
+                <div className="mt-2 text-right space-y-1">
+                  <div className="text-sm text-gray-600">
+                    Subtotal: ${(item.quantity * item.unit_price).toFixed(2)}
+                  </div>
+                  {(item.discount_percent || item.discount_amount) ? (
+                    <>
+                      <div className="text-sm text-red-600">
+                        Discount: -${calculateItemDiscount(item).toFixed(2)}
+                      </div>
+                      <div className="text-sm font-medium">
+                        Line Total: ${(item.quantity * item.unit_price - calculateItemDiscount(item)).toFixed(2)}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-sm font-medium">
+                      Line Total: ${(item.quantity * item.unit_price).toFixed(2)}
+                    </div>
+                  )}
                 </div>
                 <div className="mt-4">
                   <Label>Description</Label>

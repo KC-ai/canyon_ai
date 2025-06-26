@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useAuth } from '@/lib/auth'
 
 export default function HomePage() {
-  const { user } = useAuth()
+  const { user, signOut } = useAuth()
   
   const getUserName = () => {
     if (user?.user_metadata?.full_name) {
@@ -45,6 +45,13 @@ export default function HomePage() {
             Learn
           </button>
         </Link>
+        
+        <button 
+          onClick={signOut}
+          className="w-full py-2 text-sm font-light text-gray-500 border border-gray-200 hover:border-gray-300 transition-colors mt-8"
+        >
+          Sign Out
+        </button>
       </div>
     </div>
   )

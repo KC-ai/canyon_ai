@@ -374,8 +374,8 @@ class SupabaseWorkflowService:
             
             # Update the step by ID instead of order to avoid SQL keyword conflicts
             result = supabase.table('workflow_steps').update({
-                "status": "rejected",
-                "action_taken": "reject",
+                "status": WorkflowStepStatus.REJECTED.value,
+                "action_taken": ApprovalAction.REJECT.value,
                 "completed_at": now,
                 "completed_by": user_id,
                 "comments": action.comments,
@@ -388,17 +388,27 @@ class SupabaseWorkflowService:
             
             # Cascade rejection - mark all pending/in-progress steps as skipped
             # Note: action_taken should be null for skipped steps, not "skipped"
+            # Update pending steps
             supabase.table('workflow_steps').update({
-                "status": "skipped",
+                "status": WorkflowStepStatus.SKIPPED.value,
                 "action_taken": None,
                 "completed_at": now,
                 "comments": "Skipped due to workflow rejection",
                 "updated_at": now
-            }).eq('workflow_id', workflow_id).in_('status', ['pending', 'in_progress']).execute()
+            }).eq('workflow_id', workflow_id).eq('status', WorkflowStepStatus.PENDING.value).execute()
             
-            # Update workflow status to rejected
+            # Update in_progress steps
+            supabase.table('workflow_steps').update({
+                "status": WorkflowStepStatus.SKIPPED.value,
+                "action_taken": None,
+                "completed_at": now,
+                "comments": "Skipped due to workflow rejection",
+                "updated_at": now
+            }).eq('workflow_id', workflow_id).eq('status', WorkflowStepStatus.IN_PROGRESS.value).execute()
+            
+            # Update workflow status to cancelled (rejected not allowed in schema)
             supabase.table('workflows').update({
-                "status": "rejected",
+                "status": WorkflowStatus.CANCELLED.value,
                 "completed_at": now,
                 "updated_at": now
             }).eq('id', workflow_id).execute()
