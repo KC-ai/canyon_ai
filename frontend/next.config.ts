@@ -7,10 +7,7 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  experimental: {
-    serverComponentsExternalPackages: [],
-  },
-  outputFileTracing: false,
+  output: "standalone",
 };
 
 export default nextConfig;
