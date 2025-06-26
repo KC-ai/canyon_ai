@@ -59,7 +59,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
     expose_headers=["X-Request-ID"],
 )
@@ -324,3 +324,6 @@ app.include_router(quotes.router, prefix="/api/quotes", tags=["Quotes"])
 
 from app.api import workflows
 app.include_router(workflows.router, prefix="/api/workflows", tags=["Workflows"])
+
+from app.api import llm
+app.include_router(llm.router, prefix="/api/llm", tags=["AI/LLM"])

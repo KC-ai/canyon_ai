@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, Query, status
 from typing import List
 from app.models.quotes import Quote, QuoteCreate, QuoteWithWorkflowCreate, QuoteUpdate, QuoteListResponse
-from app.services.quote_service import QuoteService
+from app.services.supabase_quote_service import SupabaseQuoteService as QuoteService
 from app.core.auth import get_current_user_id, AuthUser, get_current_user, get_current_user_id_dev
 from app.core.logging_config import get_logger
 
@@ -24,7 +24,7 @@ async def get_quotes(
         })
         
         # Get quotes and total count
-        quotes = await QuoteService.get_quotes(user_id, skip, limit)
+        quotes = await QuoteService.list_quotes(user_id, skip, limit)
         total_count = await QuoteService.get_quote_count(user_id)
         
         # Disable automatic sample data creation to prevent quote recreation
@@ -79,34 +79,42 @@ async def create_quote_with_workflow(
     user_id: str = Depends(get_current_user_id)
 ):
     """Create a new quote with custom workflow"""
-    logger.info(f"Creating quote with workflow for user {user_id}", extra={
-        "user_id": user_id,
-        "quote_title": quote_data.title,
-        "has_workflow": quote_data.workflow is not None
-    })
-    
-    # Extract workflow data
-    workflow_config = quote_data.workflow
-    quote_create_data = QuoteCreate(
-        customer_name=quote_data.customer_name,
-        customer_email=quote_data.customer_email,
-        title=quote_data.title,
-        description=quote_data.description,
-        status=quote_data.status,
-        valid_until=quote_data.valid_until,
-        items=quote_data.items
-    )
-    
-    # Create quote with custom workflow
-    quote = await QuoteService.create_quote_with_workflow(quote_create_data, workflow_config, user_id)
-    
-    logger.info(f"Quote with workflow created successfully: {quote.id}", extra={
-        "quote_id": quote.id,
-        "user_id": user_id,
-        "workflow_id": quote.workflow_id
-    })
-    
-    return quote
+    try:
+        logger.info(f"Creating quote with workflow for user {user_id}", extra={
+            "user_id": user_id,
+            "quote_title": quote_data.title,
+            "has_workflow": quote_data.workflow is not None
+        })
+        
+        # Extract workflow data
+        workflow_config = quote_data.workflow
+        quote_create_data = QuoteCreate(
+            customer_name=quote_data.customer_name,
+            customer_email=quote_data.customer_email,
+            title=quote_data.title,
+            description=quote_data.description,
+            status=quote_data.status,
+            valid_until=quote_data.valid_until,
+            items=quote_data.items
+        )
+        
+        # Create quote with custom workflow
+        quote = await QuoteService.create_quote_with_workflow(quote_create_data, workflow_config, user_id)
+        
+        logger.info(f"Quote with workflow created successfully: {quote.id}", extra={
+            "quote_id": quote.id,
+            "user_id": user_id,
+            "workflow_id": getattr(quote, 'workflow_id', None)
+        })
+        
+        return quote
+        
+    except Exception as e:
+        logger.error(f"Failed to create quote with workflow for user {user_id}: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create quote: {str(e)}"
+        )
 
 
 @router.get("/{quote_id}", response_model=Quote)
@@ -173,7 +181,7 @@ async def get_quotes_dev(
     
     try:
         # Get quotes and total count
-        quotes = await QuoteService.get_quotes(user_id, skip, limit)
+        quotes = await QuoteService.list_quotes(user_id, skip, limit)
         total_count = await QuoteService.get_quote_count(user_id)
         
         # Disable automatic sample data creation to prevent quote recreation

@@ -13,12 +13,41 @@ export default function CreateQuoteAIPage() {
     if (!description.trim()) return
     
     setIsGenerating(true)
-    // TODO: Implement AI quote generation
-    // For now, just redirect to manual creation after a brief delay
-    setTimeout(() => {
-      setIsGenerating(false)
+    
+    try {
+      // Call AI quote generation API
+      const response = await fetch('/api/llm/generate-quote', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          description: description.trim()
+        })
+      })
+      
+      if (response.ok) {
+        const result = await response.json()
+        // Store the generated quote data for the manual creation page
+        localStorage.setItem('generatedQuote', JSON.stringify(result.quote))
+        localStorage.setItem('aiSuggestions', JSON.stringify(result.suggestions))
+        localStorage.setItem('aiConfidence', result.confidence_score.toString())
+        
+        // Redirect to manual creation page with the generated quote pre-filled
+        router.push('/quotes/create/manual?from=ai')
+      } else {
+        console.error('Failed to generate quote')
+        // Fallback to manual creation
+        router.push('/quotes/create/manual')
+      }
+    } catch (error) {
+      console.error('Error generating quote:', error)
+      // Fallback to manual creation
       router.push('/quotes/create/manual')
-    }, 2000)
+    } finally {
+      setIsGenerating(false)
+    }
   }
 
   return (

@@ -38,7 +38,6 @@ export default function LoginPage() {
       </div>
 
       <div className="text-center">
-        <div className="text-6xl mb-4">🏔️</div>
         <p className="text-gray-500 mb-8">Streamline your quote-to-cash process</p>
       </div>
 

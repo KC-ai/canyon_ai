@@ -8,10 +8,10 @@ import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 
 const navigation = [
-  { name: 'Dashboard', href: '/', icon: '📊' },
-  { name: 'Quotes', href: '/quotes', icon: '💰' },
-  { name: 'Insights', href: '/insights', icon: '📈' },
-  { name: 'API Test', href: '/test-api', icon: '🔧' },
+  { name: 'Dashboard', href: '/', icon: '≡' },
+  { name: 'Quotes', href: '/quotes', icon: '"' },
+  { name: 'Insights', href: '/insights', icon: '≡' },
+  { name: 'API Test', href: '/test-api', icon: '÷' },
 ]
 
 export function Header() {

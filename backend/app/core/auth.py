@@ -36,59 +36,67 @@ class AuthUser:
 
 async def verify_token(token: str) -> AuthUser:
     """Verify JWT token and return user information"""
-    # Development mode bypass
-    if os.getenv("ENVIRONMENT") == "development" and token.startswith("dev-token-"):
-        user_id = token.replace("dev-token-", "")
-        return AuthUser(
-            user_id=user_id,
-            email=f"{user_id}@dev.local",
-            role="user"
-        )
-    
     try:
-        # Decode JWT token with Supabase-compatible options
+        # Development mode bypass
+        if os.getenv("ENVIRONMENT") == "development" and token.startswith("dev-token-"):
+            user_id = token.replace("dev-token-", "")
+            logger.debug(f"Using development token for user: {user_id}")
+            return AuthUser(
+                user_id=user_id,
+                email=f"{user_id}@dev.local",
+                role="user"
+            )
+        
+        # For development, accept Supabase tokens without strict validation
+        if os.getenv("ENVIRONMENT") == "development":
+            try:
+                # Try to decode without verification first for development
+                payload = jwt.decode(
+                    token, 
+                    options={"verify_signature": False}  # Skip signature verification in dev
+                )
+                
+                user_id = payload.get("sub")
+                email = payload.get("email") 
+                role = payload.get("role", "user")
+                
+                if user_id:
+                    logger.debug(f"Development mode: Accepting token for user {user_id}")
+                    return AuthUser(
+                        user_id=user_id, 
+                        email=email or f"{user_id}@example.com", 
+                        role=role
+                    )
+            except Exception as e:
+                logger.warning(f"Development token decode failed: {e}")
+        
+        # Production JWT verification
         payload = jwt.decode(
             token, 
             SUPABASE_JWT_SECRET, 
             algorithms=["HS256"],
             options={
                 "verify_exp": True,
-                "verify_aud": False,  # Skip audience verification for Supabase tokens
-                "verify_iss": False   # Skip issuer verification for development
+                "verify_aud": False,
+                "verify_iss": False
             }
         )
         
-        # Extract user information
         user_id = payload.get("sub")
         email = payload.get("email")
         role = payload.get("role", "user")
         
-        if not user_id or not email:
+        if not user_id:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token payload"
+                detail="Invalid token payload - missing user ID"
             )
         
-        # In development mode, skip Supabase token verification for test tokens
-        if os.getenv("ENVIRONMENT") != "development":
-            # Verify token is still valid in Supabase (production only)
-            try:
-                user_response = supabase.auth.get_user(token)
-                if not user_response.user:
-                    raise HTTPException(
-                        status_code=status.HTTP_401_UNAUTHORIZED,
-                        detail="Token not valid in auth system"
-                    )
-            except Exception as e:
-                logger.warning(f"Token verification failed: {e}")
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Token verification failed"
-                )
-        else:
-            logger.debug("Development mode: Skipping Supabase token verification")
-        
-        return AuthUser(user_id=user_id, email=email, role=role)
+        return AuthUser(
+            user_id=user_id, 
+            email=email or f"{user_id}@example.com", 
+            role=role
+        )
         
     except jwt.ExpiredSignatureError:
         raise HTTPException(

@@ -168,55 +168,5 @@
     "unit_price": "120500.00",
     "created_at": "2025-06-25T05:25:54.708713",
     "updated_at": "2025-06-25T05:25:54.708713"
-  },
-  "faa374fc-175d-4333-ab31-fd2609258bc4": {
-    "id": "faa374fc-175d-4333-ab31-fd2609258bc4",
-    "quote_id": "0422d996-7cf0-4661-8c1d-5c8b86e06626",
-    "name": "Software License",
-    "description": "Annual software license",
-    "quantity": 1,
-    "unit_price": "25000.00",
-    "created_at": "2025-06-25T06:45:30.612427",
-    "updated_at": "2025-06-25T06:45:30.612427"
-  },
-  "7154a6f1-ff10-4453-aa41-dfa973cfd31f": {
-    "id": "7154a6f1-ff10-4453-aa41-dfa973cfd31f",
-    "quote_id": "3e2721bd-a24b-4f11-a16e-707d5419ffef",
-    "name": "Test Product",
-    "description": "Product for rejection test",
-    "quantity": 1,
-    "unit_price": "30000.00",
-    "created_at": "2025-06-25T06:52:11.526178",
-    "updated_at": "2025-06-25T06:52:11.526178"
-  },
-  "5b02e0ab-6bbd-42e7-a750-393f594a5cf2": {
-    "id": "5b02e0ab-6bbd-42e7-a750-393f594a5cf2",
-    "quote_id": "79fc93ef-48f4-4ea4-bed7-a1dc7552ee38",
-    "name": "Real-Time Product",
-    "description": "Product for real-time testing",
-    "quantity": 1,
-    "unit_price": "20000.00",
-    "created_at": "2025-06-25T07:03:10.064099",
-    "updated_at": "2025-06-25T07:03:10.064099"
-  },
-  "271a27ac-686e-4161-8fea-10aaaac7948b": {
-    "id": "271a27ac-686e-4161-8fea-10aaaac7948b",
-    "quote_id": "f9bc6938-0c2a-4c07-84c1-0b3992d69a13",
-    "name": "SaaS1",
-    "description": null,
-    "quantity": 12,
-    "unit_price": "1200.00",
-    "created_at": "2025-06-25T07:54:25.410509",
-    "updated_at": "2025-06-25T07:54:25.410509"
-  },
-  "fe272c71-d43d-4b5b-af06-03672fcf817f": {
-    "id": "fe272c71-d43d-4b5b-af06-03672fcf817f",
-    "quote_id": "ccd4d51c-a7e6-47fb-9259-1b87770529ae",
-    "name": "w",
-    "description": "w",
-    "quantity": 19,
-    "unit_price": "1000.00",
-    "created_at": "2025-06-25T08:19:44.618777",
-    "updated_at": "2025-06-25T08:19:44.618777"
   }
 }

@@ -38,17 +38,18 @@ class ApiClient {
         hasAccessToken: !!session?.access_token,
         userId: session?.user?.id
       })
+      
+      if (!session?.access_token) {
+        throw new Error('No valid session found. Please log in.')
+      }
+      
       return {
         'Content-Type': 'application/json',
-        ...(session?.access_token && {
-          'Authorization': `Bearer ${session.access_token}`
-        })
+        'Authorization': `Bearer ${session.access_token}`
       }
     } catch (error) {
       console.error('Auth header error:', error)
-      return {
-        'Content-Type': 'application/json'
-      }
+      throw new Error('Authentication required. Please log in to continue.')
     }
   }
 
@@ -102,17 +103,32 @@ class ApiClient {
 
     try {
       const headers = await this.getAuthHeaders()
+      const url = `${this.baseURL}${endpoint}`
+      
+      console.log('Making request:', {
+        url,
+        method: options.method || 'GET',
+        headers,
+        hasBody: !!options.body
+      })
         
-      const response = await fetch(`${this.baseURL}${endpoint}`, {
+      const response = await fetch(url, {
         ...options,
         headers: { ...headers, ...options.headers },
         signal: controller.signal
+      })
+
+      console.log('Response received:', {
+        status: response.status,
+        ok: response.ok,
+        headers: Object.fromEntries(response.headers.entries())
       })
 
       clearTimeout(timeoutId)
       return await this.handleResponse(response)
     } catch (error) {
       clearTimeout(timeoutId)
+      console.error('Request failed:', error)
       
       if (error instanceof Error && error.name === 'AbortError') {
         const timeoutError: ApiError = {
@@ -206,12 +222,11 @@ export const workflowsApi = {
 
   // Update workflow steps order (from drag-and-drop)
   async updateWorkflowSteps(workflowId: string, result: DragDropResult): Promise<ApprovalWorkflow> {
-    const updateData = {
-      steps: result.items.map((item, index) => ({
-        ...item,
-        order: index + 1
-      }))
-    }
+    // Backend expects List[WorkflowStepUpdate] directly, not wrapped in steps object
+    const updateData = result.items.map((item, index) => ({
+      ...item,
+      order: index + 1
+    }))
     
     try {
       return await api.put(`/api/workflows/${workflowId}/steps`, updateData)
@@ -297,7 +312,7 @@ export const workflowsApi = {
   ): Promise<ApprovalWorkflow> {
     try {
       // Ensure undefined values are converted to null for proper JSON serialization
-      const cleanedUpdateData = JSON.parse(JSON.stringify(updateData, (key, value) => 
+      const cleanedUpdateData = JSON.parse(JSON.stringify(updateData, (_, value) => 
         value === undefined ? null : value
       ))
       return await api.put(`/api/workflows/${workflowId}`, cleanedUpdateData)

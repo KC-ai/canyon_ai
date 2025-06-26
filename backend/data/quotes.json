@@ -170,5 +170,18 @@
     "created_at": "2025-06-25T04:19:10.974702",
     "updated_at": "2025-06-25T04:19:10.974702",
     "workflow_id": "8a190811-6999-481f-8a40-bf37ddd94d45"
+  },
+  "0aa56646-ef09-4672-b1bc-b9cb20db26f5": {
+    "id": "0aa56646-ef09-4672-b1bc-b9cb20db26f5",
+    "user_id": "dev-user-123",
+    "customer_name": "Test Customer",
+    "customer_email": "test@example.com",
+    "title": "Test Quote",
+    "description": "Test description",
+    "status": "draft",
+    "valid_until": null,
+    "total_amount": "100.00",
+    "created_at": "2025-06-26T01:27:56.336431",
+    "updated_at": "2025-06-26T01:27:56.336431"
   }
 }

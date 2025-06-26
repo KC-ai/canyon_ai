@@ -172,11 +172,12 @@ class QuoteBase(BaseModel):
         if v is not None:
             v = v.strip()
             if v:
-                # Basic email validation
+                # More flexible email validation
                 email_pattern = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
                 if not email_pattern.match(v):
                     raise ValueError('Invalid email format')
                 return v
+            # If empty string after strip, treat as None (optional field)
             return None
         return v
     

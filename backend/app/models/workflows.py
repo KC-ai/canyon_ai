@@ -31,6 +31,7 @@ class WorkflowStatus(str, Enum):
     ACTIVE = "active"
     COMPLETED = "completed"
     CANCELLED = "cancelled"
+    REJECTED = "rejected"
     FAILED = "failed"
 
 

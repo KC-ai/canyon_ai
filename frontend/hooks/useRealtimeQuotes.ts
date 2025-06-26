@@ -157,13 +157,10 @@ export function useRealtimeQuotes() {
     loadQuotes()
   }, [loadQuotes])
 
-  // Set up real-time subscription (temporarily disabled due to timeout issues)
+  // Set up real-time subscription
   useEffect(() => {
-    // TODO: Re-enable when Supabase is properly configured
-    console.log('Real-time subscription disabled - using backend API only')
+    console.log('Setting up real-time subscription for quotes')
     
-    // Uncomment below when ready to use Supabase real-time:
-    /*
     const channel = supabase.channel('shared_quotes_channel')
     channel
       .on('broadcast', { event: 'quote_updated' }, (payload) => {
@@ -197,8 +194,7 @@ export function useRealtimeQuotes() {
       channel.unsubscribe()
       supabase.removeChannel(channel)
     }
-    */
-  }, [])
+  }, [optimisticUpdate])
 
   return {
     quotes,

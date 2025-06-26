@@ -43,7 +43,7 @@ export function LandingPage() {
         {/* Features Grid */}
         <div className="mt-20 grid grid-cols-1 md:grid-cols-3 gap-8">
           <div className="bg-white rounded-xl shadow-md p-8 text-center">
-            <div className="text-5xl mb-6">💰</div>
+            <div className="text-5xl mb-6">"</div>
             <h3 className="text-xl font-semibold mb-4">Smart Quote Creation</h3>
             <p className="text-gray-600">
               Create professional quotes with automated pricing, discounts, and product configurations
@@ -51,7 +51,7 @@ export function LandingPage() {
           </div>
           
           <div className="bg-white rounded-xl shadow-md p-8 text-center">
-            <div className="text-5xl mb-6">⚡</div>
+            <div className="text-5xl mb-6">≡</div>
             <h3 className="text-xl font-semibold mb-4">Approval Workflows</h3>
             <p className="text-gray-600">
               Customizable approval chains with drag-and-drop workflow builder for Deal Desk, CRO, Legal, and Finance
@@ -59,7 +59,7 @@ export function LandingPage() {
           </div>
           
           <div className="bg-white rounded-xl shadow-md p-8 text-center">
-            <div className="text-5xl mb-6">📈</div>
+            <div className="text-5xl mb-6">≡</div>
             <h3 className="text-xl font-semibold mb-4">Business Insights</h3>
             <p className="text-gray-600">
               Track approval times, quote performance, and sales pipeline metrics with comprehensive analytics
