@@ -1,5 +1,8 @@
 import { validateNextConfig } from './next.config.validator.mjs';
 
+import path from 'path';
+import { fileURLToPath } from 'url';
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   eslint: {
@@ -11,15 +14,8 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  // Add webpack configuration to check options
-  webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
-    // Log configuration for validation
-    if (dev) {
-      console.log('Next.js Config Validation:');
-      console.log('- ESLint:', nextConfig.eslint);
-      console.log('- TypeScript:', nextConfig.typescript);
-      console.log('- Images:', nextConfig.images);
-    }
+  webpack: (config, { isServer }) => {
+    config.resolve.alias['@'] = path.resolve(path.dirname(fileURLToPath(import.meta.url)));
     return config;
   },
 }
