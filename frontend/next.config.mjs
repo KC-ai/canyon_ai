@@ -15,7 +15,7 @@ const nextConfig = {
     unoptimized: true,
   },
   webpack: (config, { isServer }) => {
-    config.resolve.alias['@'] = path.resolve(path.dirname(fileURLToPath(import.meta.url)));
+    config.resolve.alias['@'] = path.resolve('./');
     return config;
   },
 }
