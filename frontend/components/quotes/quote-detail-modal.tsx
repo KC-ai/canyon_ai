@@ -45,6 +45,10 @@ export function QuoteDetailModal({ quote: initialQuote, isOpen, onClose, current
   // Fetch full quote data with workflow when modal opens
   const { data: fullQuote, isLoading: isLoadingQuote, refetch } = useQuote(initialQuote?.id || '', !isOpen)
   
+  // Always use full quote data when available (which includes workflow steps)
+  // Don't fall back to initial quote which doesn't have workflow data
+  const quote = fullQuote || (isLoadingQuote ? null : initialQuote)
+  
   // Refetch when modal opens to ensure latest data
   useEffect(() => {
     if (isOpen && initialQuote?.id) {
@@ -67,11 +71,7 @@ export function QuoteDetailModal({ quote: initialQuote, isOpen, onClose, current
       usingFullQuote: !!fullQuote,
       usingInitialQuote: !fullQuote && !!initialQuote
     });
-  }, [isOpen, initialQuote, fullQuote, isLoadingQuote]);
-  
-  // Always use full quote data when available (which includes workflow steps)
-  // Don't fall back to initial quote which doesn't have workflow data
-  const quote = fullQuote || (isLoadingQuote ? null : initialQuote)
+  }, [isOpen, initialQuote, fullQuote, isLoadingQuote, quote?.workflow_steps, quote?.id, quote?.status]);
   
   // Log if we detect temporary IDs in workflow steps
   useEffect(() => {

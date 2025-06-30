@@ -136,7 +136,7 @@ function dispatch(action: Action) {
   })
 }
 
-function toast({ title, description, variant = "default" }: ToastProps) {
+export function toast({ title, description, variant = "default" }: ToastProps) {
   // Simple toast implementation - in a real app you'd use a proper toast library
   console.log(`Toast: ${title} - ${description}`)
 
