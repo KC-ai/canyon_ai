@@ -4,12 +4,12 @@ services:
     name: canyon-ai
     env: python
     buildCommand: cd backend && pip install -r requirements.txt
-    startCommand: cd backend && ALLOWED_ORIGINS=https://canyon-ai-1.onrender.com,https://canyon-ai.onrender.com uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    startCommand: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
       - key: ALLOWED_ORIGINS
-        value: https://canyon-ai-1.onrender.com,https://canyon-ai.onrender.com
+        value: "https://canyon-ai-1.onrender.com,http://localhost:3000"
 
   # Frontend Next.js Service
   - type: web
