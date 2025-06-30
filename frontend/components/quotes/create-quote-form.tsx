@@ -294,7 +294,7 @@ export function CreateQuoteForm() {
                       AI Quote Generation
                     </CardTitle>
                     <CardDescription className="text-gray-200">
-                      Describe your quote requirements in natural language and let AI generate the details
+                      Describe your quote requirements with specific numbers and context. Our AI extracts quantitative data to generate accurate pricing, bundles, and professional quotes.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="p-8 space-y-6">
@@ -304,7 +304,13 @@ export function CreateQuoteForm() {
                       </Label>
                       <Textarea
                         id="ai-prompt"
-                        placeholder="Example: Customer A wants 100 seats of product X with 25% discount for annual subscription..."
+                        placeholder="Examples:
+• Acme Corp (500 employees) needs CRM for 75 sales reps, annual contract, integrate with existing ERP
+• TechStart (25 people) wants project management tool, tight budget, launch in Q2
+• Global Bank needs document management for 2000 users, SOC 2 compliance required
+• Manufacturing company wants ERP replacement, 1500 employees across 8 locations
+
+Include: Company size, user count, budget level, timeline, special requirements..."
                         value={aiPrompt}
                         onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setAiPrompt(e.target.value)}
                         rows={5}

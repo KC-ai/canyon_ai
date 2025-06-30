@@ -21,6 +21,8 @@ import {
   XCircle,
   AlertCircle,
   ArrowDown,
+  GripVertical,
+  ChevronDown,
 } from "lucide-react"
 
 interface WorkflowStep {
@@ -305,12 +307,13 @@ export function WorkflowVisualization({
   }
 
   return (
-    <div className={isCompact ? "space-y-4" : "space-y-8"}>
+    <div className="space-y-4">
       {/* Workflow Steps */}
       <div className="relative">
         {steps.map((step, index) => {
-          const Icon = personaIcons[step.persona as keyof typeof personaIcons]
-          const StatusIcon = statusConfig[step.status].icon
+          const Icon = personaIcons[step.persona as keyof typeof personaIcons] || User
+          const statusCfg = statusConfig[step.status as keyof typeof statusConfig] || statusConfig.pending
+          const StatusIcon = statusCfg.icon
           const isDragging = draggedStep === step.id
           const isDragOver = dragOverStep === step.id
 
@@ -324,59 +327,46 @@ export function WorkflowVisualization({
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, step.id)}
                 className={`
-                workflow-step group relative transition-all duration-300
-                ${isDragging ? "opacity-50 transform rotate-1 scale-105 z-50" : ""}
-                ${isDragOver ? "transform scale-105" : ""}
-                ${canDragAndDrop ? "cursor-grab active:cursor-grabbing" : ""}
-              `}
+                  workflow-step group relative transition-all duration-200
+                  ${isDragging ? "opacity-50 transform rotate-1 scale-105 z-50" : ""}
+                  ${isDragOver ? "transform scale-105" : ""}
+                  ${canDragAndDrop ? "cursor-grab active:cursor-grabbing" : ""}
+                `}
               >
                 <Card
                   className={`
-                border-2 transition-all duration-300 hover:shadow-xl
-                ${statusConfig[step.status].bgColor}
-                ${statusConfig[step.status].borderColor}
-                ${isDragOver ? "border-blue-400 bg-blue-50 shadow-xl" : "hover:border-gray-400"}
-                ${step.status === "rejected" ? "border-red-400" : ""}
-                ${step.status === "approved" ? "border-green-400" : ""}
-              `}
+                  border-2 transition-all duration-200 hover:shadow-lg
+                  ${statusCfg.bgColor}
+                  ${isDragOver ? "border-blue-400 bg-blue-50 shadow-lg" : "border-gray-200 hover:border-gray-300"}
+                  ${step.status === "rejected" ? "border-red-300" : ""}
+                  ${step.status === "approved" ? "border-green-300" : ""}
+                `}
                 >
-                  <CardContent className={cardPadding}>
-                    <div className={`flex items-center justify-between ${spacing}`}>
-                      <div className={`flex items-center ${spacing}`}>
-                        {canDragAndDrop && !isCompact && (
-                          <div className="cursor-grab active:cursor-grabbing flex flex-col gap-1 mr-2">
-                            <div className="flex gap-1">
-                              <div className="w-1.5 h-1.5 bg-gray-400 rounded-full group-hover:bg-gray-600 transition-colors"></div>
-                              <div className="w-1.5 h-1.5 bg-gray-400 rounded-full group-hover:bg-gray-600 transition-colors"></div>
-                            </div>
-                            <div className="flex gap-1">
-                              <div className="w-1.5 h-1.5 bg-gray-400 rounded-full group-hover:bg-gray-600 transition-colors"></div>
-                              <div className="w-1.5 h-1.5 bg-gray-400 rounded-full group-hover:bg-gray-600 transition-colors"></div>
-                            </div>
-                            <div className="flex gap-1">
-                              <div className="w-1.5 h-1.5 bg-gray-400 rounded-full group-hover:bg-gray-600 transition-colors"></div>
-                              <div className="w-1.5 h-1.5 bg-gray-400 rounded-full group-hover:bg-gray-600 transition-colors"></div>
-                            </div>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        {canDragAndDrop && (
+                          <div className="cursor-grab active:cursor-grabbing">
+                            <GripVertical className="h-5 w-5 text-gray-400 group-hover:text-gray-600" />
                           </div>
                         )}
 
-                        <div className={`flex items-center ${isCompact ? "gap-3" : "gap-4"}`}>
+                        <div className="flex items-center gap-3">
                           <div
                             className={`
-                          ${isCompact ? "p-3" : "p-4"} rounded-full transition-all duration-300 border-2
-                          ${statusConfig[step.status].bgColor}
-                          ${statusConfig[step.status].borderColor}
-                          ${step.status === "approved" ? "bg-green-100 border-green-400" : ""}
-                          ${step.status === "rejected" ? "bg-red-100 border-red-400" : ""}
-                          ${step.status === "pending" ? "bg-gray-100 border-gray-400" : ""}
-                        `}
+                            p-3 rounded-full transition-colors border-2
+                            ${statusCfg.bgColor}
+                            ${step.status === "approved" ? "border-green-300" : ""}
+                            ${step.status === "rejected" ? "border-red-300" : ""}
+                            ${step.status === "pending" ? "border-gray-300" : ""}
+                          `}
                           >
-                            <Icon className={iconSize} />
+                            <Icon className="h-6 w-6 text-gray-700" />
                           </div>
 
                           <div>
-                            <h4 className={`font-bold ${titleSize} text-gray-900`}>{step.name || `${personaLabels[step.persona as keyof typeof personaLabels] || step.persona} Review`}</h4>
-                            <p className={`${isCompact ? "text-sm" : "text-base"} text-gray-600 font-medium mt-1`}>
+                            <h4 className="font-semibold text-gray-900 text-lg">{step.name || `${personaLabels[step.persona as keyof typeof personaLabels] || step.persona} Review`}</h4>
+                            <p className="text-sm text-gray-600 font-medium">
                               {personaLabels[step.persona as keyof typeof personaLabels]}
                             </p>
                             {(step.completedAt || step.approved_at) && (
@@ -388,59 +378,54 @@ export function WorkflowVisualization({
                         </div>
                       </div>
 
-                      <div className={`flex items-center ${isCompact ? "gap-2" : "gap-4"}`}>
-                        <Badge
-                          className={`${statusConfig[step.status].color} font-semibold ${isCompact ? "px-3 py-1 text-xs" : "px-4 py-2 text-sm"}`}
-                        >
-                          <StatusIcon className={`${isCompact ? "h-3 w-3" : "h-4 w-4"} mr-1`} />
+                      <div className="flex items-center gap-3">
+                        <Badge className={`${statusCfg.color} font-medium px-3 py-1`}>
+                          <StatusIcon className="h-3 w-3 mr-1" />
                           {step.status.replace("_", " ").toUpperCase()}
                         </Badge>
 
-                        {canTakeAction(step) && !isCompact && (
-                          <div className="flex gap-3">
+                        {canTakeAction(step) && (
+                          <div className="flex gap-2">
                             <Button
-                              size="lg"
-                              className="bg-green-600 hover:bg-green-700 text-white font-semibold px-6"
+                              size="sm"
+                              className="bg-green-600 hover:bg-green-700 text-white"
                               onClick={() => handleStepAction(step.id, "approve")}
                             >
-                              <Check className="h-5 w-5 mr-2" />
+                              <Check className="h-4 w-4 mr-1" />
                               Approve
                             </Button>
                             <Button
-                              size="lg"
+                              size="sm"
                               variant="destructive"
-                              className="font-semibold px-6"
                               onClick={() => setSelectedAction({ stepId: step.id, action: "reject" })}
                             >
-                              <X className="h-5 w-5 mr-2" />
+                              <X className="h-4 w-4 mr-1" />
                               Reject
                             </Button>
                           </div>
                         )}
 
-                        {canEdit && isAccountExecutive && !isCompact && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="text-gray-400 hover:text-red-600 hover:bg-red-50"
-                            onClick={() => removeStep(step.id)}
-                          >
-                            <Trash2 className="h-5 w-5" />
-                          </Button>
+                        {canEdit && isAccountExecutive && (
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-gray-400 hover:text-red-600"
+                              onClick={() => removeStep(step.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         )}
                       </div>
                     </div>
 
-                    {(step.comments || step.rejectionNotes) && (
-                      <div
-                        className={`${isCompact ? "mt-4 p-3" : "mt-6 p-4"} bg-gray-100 rounded-lg border border-gray-200`}
-                      >
-                        <p className={`${isCompact ? "text-xs" : "text-sm"} font-semibold text-gray-700 mb-2`}>
-                          {step.rejectionNotes ? "Rejection Notes:" : "Comments:"}
-                        </p>
-                        <p className={`${isCompact ? "text-xs" : "text-sm"} text-gray-600`}>
-                          {step.rejectionNotes || step.rejection_reason || step.comments}
-                        </p>
+                    {(step.comments || step.rejectionNotes || step.rejection_reason) && (
+                      <div className="mt-4 p-3 bg-gray-100 rounded-lg">
+                                                  <p className="text-sm text-gray-700 font-medium">
+                            {(step.rejectionNotes || step.rejection_reason) ? "Rejection Notes:" : "Comments:"}
+                          </p>
+                        <p className="text-sm text-gray-600 mt-1">{step.rejectionNotes || step.rejection_reason || step.comments}</p>
                       </div>
                     )}
                   </CardContent>
@@ -449,19 +434,13 @@ export function WorkflowVisualization({
 
               {/* Enhanced Connection Arrow */}
               {index < steps.length - 1 && (
-                <div className={`flex justify-center ${isCompact ? "py-2" : "py-6"} relative`}>
+                <div className="flex justify-center py-3 relative">
                   <div className="flex flex-col items-center">
-                    <div
-                      className={`w-1 ${isCompact ? "h-3" : "h-6"} bg-gradient-to-b from-gray-300 to-gray-400 rounded-full`}
-                    ></div>
-                    <div
-                      className={`${isCompact ? "p-1" : "p-2"} bg-white border-2 border-gray-300 rounded-full shadow-sm`}
-                    >
-                      <ArrowDown className={`${isCompact ? "h-3 w-3" : "h-4 w-4"} text-gray-500`} />
+                    <div className="w-0.5 h-4 bg-gradient-to-b from-gray-300 to-gray-400"></div>
+                    <div className="p-1 bg-white border-2 border-gray-300 rounded-full">
+                      <ChevronDown className="h-3 w-3 text-gray-500" />
                     </div>
-                    <div
-                      className={`w-1 ${isCompact ? "h-3" : "h-6"} bg-gradient-to-b from-gray-400 to-gray-300 rounded-full`}
-                    ></div>
+                    <div className="w-0.5 h-4 bg-gradient-to-b from-gray-400 to-gray-300"></div>
                   </div>
                 </div>
               )}
@@ -471,103 +450,88 @@ export function WorkflowVisualization({
       </div>
 
       {/* Add Step Button - Only for Account Executive */}
-      {canEdit && isAccountExecutive && !showAddStep && !isCompact && (
-        <div>
-          <Button
-            variant="outline"
-            className="w-full border-dashed border-2 border-gray-300 text-gray-600 hover:border-gray-400 bg-transparent py-8 text-lg font-semibold"
-            onClick={() => setShowAddStep(true)}
-          >
-            <Plus className="h-6 w-6 mr-3" />
-            Add Approval Step
-          </Button>
-        </div>
+      {canEdit && isAccountExecutive && !showAddStep && (
+        <Button
+          variant="outline"
+          className="w-full border-dashed border-2 border-gray-300 text-gray-600 hover:border-gray-400 bg-transparent py-6"
+          onClick={() => setShowAddStep(true)}
+        >
+          <Plus className="h-5 w-5 mr-2" />
+          Add Approval Step
+        </Button>
       )}
 
-      {showAddStep && !isCompact && (
-        <div>
-          <Card className="border-2 border-gray-200 shadow-lg">
-            <CardContent className="p-8">
-              <h4 className="text-xl font-bold text-gray-900 mb-6">Add New Approval Step</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {Object.entries(personaLabels)
-                  .filter(([key]) => key !== "ae")
-                  .map(([key, label]) => {
-                    const Icon = personaIcons[key as keyof typeof personaIcons]
-                    return (
-                      <Button
-                        key={key}
-                        variant="outline"
-                        className="justify-start h-auto p-6 bg-transparent hover:bg-gray-50 border-2 border-gray-200 hover:border-gray-400"
-                        onClick={() => addNewStep(key)}
-                      >
-                        <Icon className="h-6 w-6 mr-4" />
-                        <span className="font-semibold text-lg">{label}</span>
-                      </Button>
-                    )
-                  })}
-              </div>
-              <Button
-                variant="ghost"
-                size="lg"
-                className="w-full mt-6 font-semibold"
-                onClick={() => setShowAddStep(false)}
-              >
-                Cancel
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
+      {showAddStep && (
+        <Card className="border-gray-200">
+          <CardContent className="p-6">
+            <h4 className="text-lg font-semibold text-gray-900 mb-4">Add New Approval Step</h4>
+            <div className="grid grid-cols-2 gap-3">
+              {Object.entries(personaLabels)
+                .filter(([key]) => key !== "ae") // Don't allow adding AE as approver
+                .map(([key, label]) => {
+                  const Icon = personaIcons[key as keyof typeof personaIcons]
+                  return (
+                    <Button
+                      key={key}
+                      variant="outline"
+                      className="justify-start h-auto p-4 bg-transparent hover:bg-gray-50"
+                      onClick={() => addNewStep(key)}
+                    >
+                      <Icon className="h-5 w-5 mr-3" />
+                      <span className="font-medium">{label}</span>
+                    </Button>
+                  )
+                })}
+            </div>
+            <Button variant="ghost" size="sm" className="w-full mt-4" onClick={() => setShowAddStep(false)}>
+              Cancel
+            </Button>
+          </CardContent>
+        </Card>
       )}
 
       {/* Rejection Action Panel */}
-      {selectedAction && selectedAction.action === "reject" && !isCompact && (
-        <div>
-          <Card className="border-2 border-red-300 bg-red-50 shadow-lg">
-            <CardContent className="p-8">
-              <h4 className="text-xl font-bold text-red-900 mb-4">Reject Quote</h4>
-              <p className="text-red-700 mb-6 text-lg">
-                This will reject the quote and all subsequent approval steps. Please provide a reason for rejection.
-              </p>
-              <div className="space-y-6">
-                <div>
-                  <label className="text-base font-semibold text-red-900 mb-3 block">Rejection Reason (Required)</label>
-                  <Textarea
-                    value={rejectionNotes}
-                    onChange={(e) => setRejectionNotes(e.target.value)}
-                    placeholder="Please explain why you are rejecting this quote..."
-                    rows={4}
-                    className={`text-base border-2 ${!rejectionNotes.trim() ? "border-red-400" : "border-red-300"} focus:border-red-500`}
-                  />
-                  {!rejectionNotes.trim() && <p className="text-red-600 text-sm mt-2">Rejection reason is required</p>}
-                </div>
-
-                <div className="flex gap-4">
-                  <Button
-                    onClick={() => handleStepAction(selectedAction.stepId, "reject")}
-                    disabled={!rejectionNotes.trim()}
-                    variant="destructive"
-                    size="lg"
-                    className="font-semibold px-8"
-                  >
-                    Confirm Rejection
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    className="border-2 border-gray-300 hover:border-gray-400 font-semibold px-8 bg-transparent"
-                    onClick={() => {
-                      setSelectedAction(null)
-                      setRejectionNotes("")
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                </div>
+      {selectedAction && selectedAction.action === "reject" && (
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="p-6">
+            <h4 className="text-lg font-semibold text-gray-900 mb-3">Reject Quote</h4>
+            <p className="text-sm text-gray-600 mb-4">
+              This will reject the quote and all subsequent approval steps. Please provide a reason for rejection.
+            </p>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">Rejection Reason (Required)</label>
+                <Textarea
+                  value={rejectionNotes}
+                  onChange={(e) => setRejectionNotes(e.target.value)}
+                  placeholder="Please explain why you are rejecting this quote..."
+                  rows={3}
+                  className={!rejectionNotes.trim() ? "border-red-300" : ""}
+                />
+                {!rejectionNotes.trim() && <p className="text-red-600 text-sm mt-1">Rejection reason is required</p>}
               </div>
-            </CardContent>
-          </Card>
-        </div>
+
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => handleStepAction(selectedAction.stepId, "reject")}
+                  disabled={!rejectionNotes.trim()}
+                  variant="destructive"
+                >
+                  Confirm Rejection
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedAction(null)
+                    setRejectionNotes("")
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   )
