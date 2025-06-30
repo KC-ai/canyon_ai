@@ -1,0 +1,87 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Canyon.ai CPQ System - Cursor Rules
+
+## Core Development Principles
+- Follow DRY (Don't Repeat Yourself) principles strictly
+- Each component should have a single responsibility
+- Review the entire codebase section before making changes
+- Never duplicate code - create reusable utilities instead
+- All elements should be in their own dedicated files
+- Use TypeScript for all frontend code with strict typing
+- Use Pydantic models for all backend data validation
+- Implement proper error handling at every layer
+
+## Code Organization Rules
+- One component per file, named clearly (PascalCase for React components)
+- Group related functionality in dedicated directories
+- Keep API routes RESTful and consistent
+- Use barrel exports (index.ts) for clean imports
+- Separate business logic from presentation logic
+- Create custom hooks for complex state management
+
+## Database Rules
+- Always use Supabase Row Level Security (RLS)
+- Create proper indexes for performance
+- Use UUID for all primary keys
+- Include created_at and updated_at timestamps
+- Validate data both client-side and server-side
+- Use database transactions for multi-table operations
+
+## API Design Rules
+- Use consistent HTTP status codes
+- Return structured error responses
+- Include proper CORS headers
+- Validate JWT tokens on all protected routes
+- Use Pydantic response models for type safety
+- Implement rate limiting where appropriate
+
+## Frontend Rules
+- Use Next.js App Router (not Pages Router)
+- Implement optimistic updates for better UX
+- Show loading states for all async operations
+- Use Shadcn/UI components consistently
+- Implement proper form validation with react-hook-form
+- Use TypeScript interfaces that match backend models exactly
+
+## Real-time Rules
+- Subscribe to Supabase real-time channels appropriately
+- Unsubscribe from channels on component unmount
+- Handle connection failures gracefully
+- Use optimistic updates with rollback on failure
+- Show visual indicators for real-time status
+
+## Security Rules
+- Never expose service role keys in frontend
+- Validate user permissions on every backend operation
+- Use Supabase RLS as primary security layer
+- Sanitize all user inputs
+- Use environment variables for all secrets
+- Implement proper CORS configuration
+
+## Performance Rules
+- Lazy load components where appropriate
+- Use React.memo for expensive re-renders
+- Implement proper database indexing
+- Use Supabase query optimization
+- Cache API responses where appropriate
+- Minimize bundle size with proper imports
+
+## Error Handling Rules
+- Always provide user-friendly error messages
+- Log detailed errors server-side
+- Use toast notifications for user feedback
+- Implement retry mechanisms for network failures
+- Gracefully handle offline scenarios
+- Validate data at API boundaries
+
+## Testing Rules
+- Write unit tests for business logic
+- Test API endpoints thoroughly
+- Validate form submissions and edge cases
+- Test real-time functionality
+- Verify security constraints
+- Test error scenarios and edge cases
