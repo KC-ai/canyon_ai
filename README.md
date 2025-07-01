@@ -24,6 +24,7 @@ A user has the option to choose between 5 roles, based on what Persona they are.
 
 # Backlog
 
+- [ ] Re Factor code
 - [ ] Control connection of json formatted responses of the AI generated quotes to data ingestion/ matching of manual quote creation attributes better (don't produce $NaN)
 - [ ] Make faster. Lots of lag, and just refreshes every 2 seconds now
 - [ ] Connect actual data to CPQ
@@ -36,6 +37,10 @@ A user has the option to choose between 5 roles, based on what Persona they are.
 - [ ] Make auto customer approval notification work
 - [ ] Auto start in My Queue for every role?
 - [ ] Make tutorial for it, so people know different roles access different things.
+
+# Assumptions (TODO)
+
+# Future Work (TODO)
 
 
  
