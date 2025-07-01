@@ -24,18 +24,19 @@ A user has the option to choose between 5 roles, based on what Persona they are.
 
 # Backlog
 
-[ ] Control connection of json formatted responses of the AI generated quotes to data ingestion/ matching of manual quote creation attributes better (don't produce $NaN)
-[ ] Make faster. Lots of lag, and just refreshes every 2 seconds now
-[ ] Connect actual data to CPQ 
-[ ] add the name of the quote as some function of the quote id (that way can just display or soemthing - brainstorm with ai)
-[ ] resize the approval workflow on the create quote tabs to look much better resized. They’re too huge right now.
-[ ] Fix centering and aesthetics of the generation 
-[ ] Add Pop Ups for EVERYTHING 
-[ ] every time a page reloads, it takes you back to home. Like I delete a quote for example, it reloads back to the home page. I need to have it reload on the page that i want
-[ ] Pop Ups every time about to terminate quote 
-[ ] Make auto customer approval notification work
-[ ] auto start in My Queue for every role? 
-[ ] make tutorial for it, so people know different roles access diff things. 
+- [ ] Control connection of json formatted responses of the AI generated quotes to data ingestion/ matching of manual quote creation attributes better (don't produce $NaN)
+- [ ] Make faster. Lots of lag, and just refreshes every 2 seconds now
+- [ ] Connect actual data to CPQ
+- [ ] Add the name of the quote as some function of the quote id (that way can just display or something - brainstorm with ai)
+- [ ] Resize the approval workflow on the create quote tabs to look much better resized. They’re too huge right now.
+- [ ] Fix centering and aesthetics of the generation
+- [ ] Add Pop Ups for EVERYTHING
+- [ ] Every time a page reloads, it takes you back to home. Like I delete a quote for example, it reloads back to the home page. I need to have it reload on the page that I want
+- [ ] Pop Ups every time about to terminate quote
+- [ ] Make auto customer approval notification work
+- [ ] Auto start in My Queue for every role?
+- [ ] Make tutorial for it, so people know different roles access different things.
+
 
  
 
